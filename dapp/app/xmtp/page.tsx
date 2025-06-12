@@ -35,7 +35,15 @@ export default function Home() {
   const [selectedConversation, setSelectedConversation] =
     useState<AnyConversation | null>(null);
   const [messages, setMessages] = useState<DecodedMessage<any>[]>([]);
-
+  const [conversationNames, setConversationNames] = useState<
+    Record<string, string>
+  >({});
+  const [conversationTypes, setConversationTypes] = useState<
+    Record<string, string>
+  >({});
+  const [messageAddresses, setMessageAddresses] = useState<
+    Record<string, string>
+  >({});
   const [loading, setLoading] = useState({
     client: false,
     conversations: false,
@@ -47,12 +55,10 @@ export default function Home() {
   const [newMessage, setNewMessage] = useState("");
   const isStreamingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newConversationType, setNewConversationType] =
     useState<NewConversationType>(NewConversationType.Direct);
   const [newRecipient, setNewRecipient] = useState("");
-
   const [syncing, setSyncing] = useState(false);
 
   const formatAddress = (addr: string | undefined): string =>
@@ -61,23 +67,6 @@ export default function Home() {
     typeof msg.content === "string"
       ? msg.content
       : "[Unsupported content type]";
-
-  const initClient = useCallback(async () => {
-    if (isConnected && address && !client) {
-      setLoading((prev) => ({ ...prev, client: true }));
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const xmtp = await initXMTP(signer);
-        setClient(xmtp);
-      } catch (e) {
-        console.error("Failed to initialize XMTP client:", e);
-        setClient(null);
-      } finally {
-        setLoading((prev) => ({ ...prev, client: false }));
-      }
-    }
-  }, [address, isConnected, client]);
 
   const formatConversationName = async (
     convo: AnyConversation
@@ -161,13 +150,6 @@ export default function Home() {
     return "Unknown";
   };
 
-  const [conversationNames, setConversationNames] = useState<
-    Record<string, string>
-  >({});
-  const [conversationTypes, setConversationTypes] = useState<
-    Record<string, string>
-  >({});
-
   const loadConversations = useCallback(async () => {
     if (!client) return;
     setLoading((prev) => ({ ...prev, conversations: true }));
@@ -196,11 +178,55 @@ export default function Home() {
       setConversationTypes(types);
     } catch (e) {
       console.error("Failed to load conversations:", e);
+      setError("Failed to load conversations");
     } finally {
       setLoading((prev) => ({ ...prev, conversations: false }));
     }
   }, [client]);
 
+  const initClient = useCallback(async () => {
+    if (isConnected && address && !client) {
+      setLoading((prev) => ({ ...prev, client: true }));
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const xmtp = await initXMTP(signer);
+        setClient(xmtp);
+        // Load conversations after client is initialized
+        await loadConversations();
+      } catch (e) {
+        console.error("Failed to initialize XMTP client:", e);
+        setClient(null);
+        setError("Failed to initialize XMTP client");
+      } finally {
+        setLoading((prev) => ({ ...prev, client: false }));
+      }
+    }
+  }, [address, isConnected, client, loadConversations]);
+
+  // Add cleanup function
+  const cleanupStates = useCallback(() => {
+    setClient(null);
+    setConversations([]);
+    setSelectedConversation(null);
+    setMessages([]);
+    setConversationNames({});
+    setConversationTypes({});
+    setNewMessage("");
+    setError(null);
+    isStreamingRef.current = false;
+  }, []);
+
+  // Update useEffect to handle connection changes
+  useEffect(() => {
+    if (!isConnected) {
+      cleanupStates();
+    } else if (isConnected && address && !client) {
+      initClient();
+    }
+  }, [isConnected, address, client, initClient, cleanupStates]);
+
+  // Update streamMessages to handle cleanup
   const streamMessages = useCallback(async () => {
     if (!client || isStreamingRef.current) return;
     isStreamingRef.current = true;
@@ -241,6 +267,7 @@ export default function Home() {
       }
     } catch (e) {
       console.error("Error in stream:", e);
+      setError("Error in message stream");
     } finally {
       isStreamingRef.current = false;
       if (stream) {
@@ -253,18 +280,15 @@ export default function Home() {
     }
   }, [client, selectedConversation, loadConversations]);
 
-  useEffect(() => {
-    if (!client && isConnected) {
-      initClient();
-    }
-  }, [client, isConnected, initClient]);
-
+  // Update useEffect for message streaming
   useEffect(() => {
     if (client && !isStreamingRef.current) {
-      loadConversations();
       streamMessages();
     }
-  }, [client, loadConversations, streamMessages]);
+    return () => {
+      isStreamingRef.current = false;
+    };
+  }, [client, streamMessages]);
 
   const loadMessages = useCallback(
     async (conversation: AnyConversation) => {
@@ -479,6 +503,10 @@ export default function Home() {
 
       console.log("Target client created, getting inbox ID");
       const targetInboxId = targetClient.inboxId;
+      const inboxState = await client.preferences.inboxStateFromInboxIds([
+        targetInboxId || "",
+      ]);
+      const addressFromInboxId = inboxState[0].accountIdentifiers[0].identifier;
       console.log("Target inbox ID:", targetInboxId);
 
       // First, try to find an existing conversation with this address
@@ -542,50 +570,68 @@ export default function Home() {
     }
   };
 
-  // Add this function to render messages
+  // Add effect to fetch addresses for messages
+  useEffect(() => {
+    const fetchMessageAddresses = async () => {
+      if (!client || messages.length === 0) return;
+
+      const newAddresses: Record<string, string> = {};
+      for (const message of messages) {
+        if (!message.senderInboxId || messageAddresses[message.senderInboxId])
+          continue;
+
+        try {
+          const inboxState = await client.preferences.inboxStateFromInboxIds([
+            message.senderInboxId,
+          ]);
+          const addressFromInboxId =
+            inboxState[0]?.accountIdentifiers?.[0]?.identifier;
+          if (addressFromInboxId) {
+            newAddresses[message.senderInboxId] = addressFromInboxId;
+          }
+        } catch (e) {
+          console.error("Error fetching address for message:", e);
+        }
+      }
+
+      if (Object.keys(newAddresses).length > 0) {
+        setMessageAddresses((prev) => ({ ...prev, ...newAddresses }));
+      }
+    };
+
+    fetchMessageAddresses();
+  }, [client, messages, messageAddresses]);
+
   const renderMessage = (message: any, index: number) => {
     if (!message) return null;
 
     // Get the current user's inbox ID
     const currentInboxId = client?.inboxId;
     const isSent = message.senderInboxId === currentInboxId;
+    const senderAddress =
+      messageAddresses[message.senderInboxId || ""] || message.senderAddress;
 
     // Handle different types of message content
-    let messageContent = "";
+    let messageContent = "[Unsupported content type]";
     if (typeof message.content === "string") {
       messageContent = message.content;
     } else if (message.content && typeof message.content === "object") {
-      // Handle system messages or other object content
-      if (message.content.initiatedByInboxId) {
-        messageContent = "System message: Conversation updated";
-      } else {
-        messageContent = JSON.stringify(message.content);
-      }
+      messageContent = JSON.stringify(message.content);
     }
-
-    console.log("Rendering message:", {
-      id: message.id,
-      content: messageContent,
-      senderInboxId: message.senderInboxId,
-      currentInboxId,
-      isSent,
-    });
 
     return (
       <div
         key={message.id || index}
-        className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}
+        className={`flex ${isSent ? "justify-end" : "justify-start"}`}
       >
         <div
           className={`max-w-[70%] rounded-lg p-3 ${
-            isSent
-              ? "bg-blue-500 text-white"
-              : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            isSent ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"
           }`}
         >
           <p className="text-sm">{messageContent}</p>
           <p className="text-xs mt-1 opacity-70">
-            {isSent ? "You" : formatAddress(message.senderInboxId)}
+            {isSent ? "You" : formatAddress(senderAddress)}
           </p>
         </div>
       </div>
