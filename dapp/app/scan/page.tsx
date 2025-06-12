@@ -8,6 +8,9 @@ export default function ScanPage() {
   const [text, setText] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -18,6 +21,7 @@ export default function ScanPage() {
       const reader = new FileReader();
       reader.onload = (e) => {
         setImage(e.target?.result as string);
+        setShowPreview(true);
       };
       reader.readAsDataURL(file);
     }
@@ -25,22 +29,41 @@ export default function ScanPage() {
 
   // Function to start camera
   const startCamera = async () => {
+    if (isInitializing) return;
+    
+    setIsInitializing(true);
+    setCameraError(null);
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsCameraActive(true);
-      }
+      console.log("Requesting camera access...");
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user"
+        }
+      });
+      console.log("Camera access granted:", mediaStream);
+      
+      streamRef.current = mediaStream;
+      setIsCameraActive(true);
+      setShowPreview(false);
     } catch (error) {
-      console.error("Error accessing camera:", error);
+      console.error("Camera access error:", error);
+      setCameraError("Failed to access camera. Please check permissions.");
+    } finally {
+      setIsInitializing(false);
     }
   };
 
   // Function to stop camera
   const stopCamera = () => {
+    console.log("Stopping camera...");
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
@@ -49,9 +72,25 @@ export default function ScanPage() {
     }
   };
 
+  // Handle video stream when stream or videoRef changes
+  useEffect(() => {
+    if (streamRef.current && videoRef.current) {
+      console.log("Setting up video stream...");
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.onloadedmetadata = () => {
+        console.log("Video metadata loaded");
+        videoRef.current?.play().catch((error) => {
+          console.error("Error playing video:", error);
+          setCameraError("Failed to start video playback");
+        });
+      };
+    }
+  }, [streamRef.current, videoRef.current]);
+
   // Function to capture image from camera
   const captureImage = () => {
     if (videoRef.current) {
+      console.log("Capturing image...");
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -60,9 +99,17 @@ export default function ScanPage() {
         ctx.drawImage(videoRef.current, 0, 0);
         const imageData = canvas.toDataURL("image/jpeg");
         setImage(imageData);
+        setShowPreview(true);
         stopCamera();
       }
     }
+  };
+
+  // Function to retake photo
+  const retakePhoto = () => {
+    setImage(null);
+    setShowPreview(false);
+    startCamera();
   };
 
   // Function to process image with OCR
@@ -105,78 +152,107 @@ export default function ScanPage() {
               </h2>
 
               {/* Camera View */}
-              {isCameraActive && (
-                <div className="relative mb-4">
+              {isCameraActive && !showPreview && (
+                <div className="relative mb-4 aspect-video bg-black rounded-lg overflow-hidden">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
-                    className="w-full rounded-lg"
+                    muted
+                    className="w-full h-full object-cover"
+                    style={{ transform: "scaleX(-1)" }} // Mirror the video
                   />
+                  {cameraError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 text-white p-4 text-center">
+                      {cameraError}
+                    </div>
+                  )}
+                  {isInitializing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 text-white p-4 text-center">
+                      Initializing camera...
+                    </div>
+                  )}
                   <button
                     onClick={captureImage}
-                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700"
+                    disabled={isInitializing}
+                    className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 shadow-lg ${
+                      isInitializing ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
-                    Capture
+                    Scan
                   </button>
                 </div>
               )}
 
               {/* Camera Controls */}
-              <div className="flex space-x-4 mb-4">
-                {!isCameraActive ? (
+              {!isCameraActive && !showPreview && (
+                <div className="space-y-4">
                   <button
                     onClick={startCamera}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    disabled={isInitializing}
+                    className={`w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 shadow-md ${
+                      isInitializing ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
-                    Start Camera
+                    {isInitializing ? "Starting Camera..." : "Start Camera"}
                   </button>
-                ) : (
-                  <button
-                    onClick={stopCamera}
-                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-                  >
-                    Stop Camera
-                  </button>
-                )}
-              </div>
 
-              {/* File Upload */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Or upload an image
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="w-full text-sm text-gray-500 dark:text-gray-400
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100
-                    dark:file:bg-blue-900 dark:file:text-blue-300"
-                />
-              </div>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                        Or
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Upload an image
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="w-full text-sm text-gray-500 dark:text-gray-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-blue-50 file:text-blue-700
+                        hover:file:bg-blue-100
+                        dark:file:bg-blue-900 dark:file:text-blue-300"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Preview */}
-              {image && (
-                <div className="mt-4">
+              {showPreview && image && (
+                <div className="space-y-4">
                   <img
                     src={image}
                     alt="Preview"
                     className="w-full rounded-lg"
                   />
-                  <button
-                    onClick={processImage}
-                    disabled={isProcessing}
-                    className={`mt-4 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 ${
-                      isProcessing ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {isProcessing ? "Processing..." : "Extract Text"}
-                  </button>
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={retakePhoto}
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+                    >
+                      Retake
+                    </button>
+                    <button
+                      onClick={processImage}
+                      disabled={isProcessing}
+                      className={`flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 ${
+                        isProcessing ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      {isProcessing ? "Processing..." : "Process"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
