@@ -20,6 +20,7 @@ async function messageAgent(userMessage: string): Promise<string | null> {
     });
 
     const data = (await response.json()) as AgentResponse;
+    console.log("Agent response:", data);
     return data.response ?? data.error ?? null;
   } catch (error) {
     console.error("Error communicating with agent:", error);

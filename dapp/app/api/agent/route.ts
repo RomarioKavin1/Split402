@@ -63,7 +63,7 @@ export async function POST(
     messages.push({ id: generateId(), role: "assistant", content: text });
 
     // 6. Return the parsed JSON response
-    return NextResponse.json({ response: parsedResponse });
+    return NextResponse.json({ response: text });
   } catch (error) {
     console.error("Error processing request:", error);
     return NextResponse.json({

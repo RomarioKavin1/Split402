@@ -116,8 +116,12 @@ export default function Home() {
   // Function to parse JSON from message text
   const parseJsonFromMessage = (text: string) => {
     try {
-      return JSON.parse(text);
-    } catch {
+      console.log("Attempting to parse message:", text);
+      const parsed = JSON.parse(text);
+      console.log("Parsed JSON:", parsed);
+      return parsed;
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
       return null;
     }
   };
@@ -130,35 +134,41 @@ export default function Home() {
           {messages.length === 0 ? (
             <p className="text-center text-gray-500">Start chatting with the Money Split Agent...</p>
           ) : (
-            messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`p-3 rounded-2xl shadow ${
-                  msg.sender === "user"
-                    ? "bg-[#0052FF] text-white self-end"
-                    : "bg-gray-100 dark:bg-gray-700 self-start"
-                }`}
-              >
-                {msg.sender === "agent" ? (
-                  <SplitDisplay data={parseJsonFromMessage(msg.text)} />
-                ) : (
-                  <ReactMarkdown
-                    components={{
-                      a: props => (
-                        <a
-                          {...props}
-                          className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />
-                      ),
-                    }}
-                  >
-                    {msg.text}
-                  </ReactMarkdown>
-                )}
-              </div>
-            ))
+            messages.map((msg, index) => {
+              console.log("Rendering message:", msg);
+              const isUser = msg.sender === "user";
+              const jsonData = !isUser ? parseJsonFromMessage(msg.text) : null;
+              
+              return (
+                <div
+                  key={index}
+                  className={`p-3 rounded-2xl shadow ${
+                    isUser
+                      ? "bg-[#0052FF] text-white self-end"
+                      : "bg-gray-100 dark:bg-gray-700 self-start"
+                  }`}
+                >
+                  {isUser ? (
+                    <ReactMarkdown
+                      components={{
+                        a: props => (
+                          <a
+                            {...props}
+                            className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        ),
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  ) : (
+                    <SplitDisplay data={jsonData} />
+                  )}
+                </div>
+              );
+            })
           )}
 
           {/* Thinking Indicator */}
