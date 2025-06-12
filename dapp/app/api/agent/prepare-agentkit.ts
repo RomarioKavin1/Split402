@@ -15,7 +15,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 /**
  * AgentKit Integration Route
  *
- * This file is your gateway to integrating AgentKit with your product.
+ * This file is your gateway to integrating AgentKit with your uct.
  * It defines the core capabilities of your agent through WalletProvider
  * and ActionProvider configuration.
  *
@@ -65,7 +65,7 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
 }> {
   if (!process.env.CDP_API_KEY_ID || !process.env.CDP_API_KEY_SECRET) {
     throw new Error(
-      "I need both CDP_API_KEY_ID and CDP_API_KEY_SECRET in your .env file to connect to the Coinbase Developer Platform.",
+      "I need both CDP_API_KEY_ID and CDP_API_KEY_SECRET in your .env file to connect to the Coinbase Developer Platform."
     );
   }
 
@@ -75,7 +75,9 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
   // Read existing wallet data if available
   if (fs.existsSync(WALLET_DATA_FILE)) {
     try {
-      walletData = JSON.parse(fs.readFileSync(WALLET_DATA_FILE, "utf8")) as WalletData;
+      walletData = JSON.parse(
+        fs.readFileSync(WALLET_DATA_FILE, "utf8")
+      ) as WalletData;
       privateKey = walletData.privateKey;
     } catch (error) {
       console.error("Error reading wallet data:", error);
@@ -85,7 +87,7 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
   if (!privateKey) {
     if (walletData?.smartWalletAddress) {
       throw new Error(
-        `I found your smart wallet but can't access your private key. Please either provide the private key in your .env, or delete ${WALLET_DATA_FILE} to create a new wallet.`,
+        `I found your smart wallet but can't access your private key. Please either provide the private key in your .env, or delete ${WALLET_DATA_FILE} to create a new wallet.`
       );
     }
     privateKey = (process.env.PRIVATE_KEY || generatePrivateKey()) as Hex;
@@ -124,7 +126,7 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
       JSON.stringify({
         privateKey,
         smartWalletAddress,
-      } as WalletData),
+      } as WalletData)
     );
 
     return { agentkit, walletProvider };
