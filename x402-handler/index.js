@@ -27,6 +27,8 @@ app.get("/x402", async (req, res,next) => {
     }
   });
   console.log(price);
+  const tx = await markAsPaid(signer,ConversationId, MessageId, address);
+  console.log(tx);
   const dynamicMiddleware = paymentMiddleware(
     receiver,
     {

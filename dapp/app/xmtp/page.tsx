@@ -6,7 +6,7 @@ import {
   DecodedMessage,
   Identifier,
 } from "@xmtp/browser-sdk";
-import { useCallback, useEffect, useRef, useState, Fragment } from "react";
+import { useCallback, useEffect, useRef, useState, Fragment, AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react";
 import { useAccount, useConnectorClient, useWalletClient } from 'wagmi';
 import { ethers, Wallet } from "ethers";
 
@@ -17,6 +17,7 @@ import SplitModal from "../../components/SplitModal";
 import { Dialog, Transition } from "@headlessui/react";
 import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
 import axios from "axios";
+import { getSplitDetails } from "@/lib/splitManagement/contractInteraction";
 // We need to extend the DecodedMessage type to include senderAddress, which is present at runtime
 interface RuntimeDecodedMessage extends DecodedMessage {
   senderAddress: string;
@@ -530,6 +531,7 @@ export default function Home() {
     },
     [client, selectedConversation, newMessage]
   );
+  
   const sendMessage = useCallback(
     async (message: string) => {
       if (!client ) {
@@ -746,102 +748,112 @@ export default function Home() {
     fetchMessageAddresses();
   }, [client, messages, messageAddresses]);
 
-  const renderMessage = (message: any, index: number) => {
-    if (!message) return null;
-  
-    const currentInboxId = client?.inboxId;
-    const isSent = message.senderInboxId === currentInboxId;
-    const senderAddress =
-      messageAddresses[message.senderInboxId || ""] || message.senderAddress;
-  
-    let messageContent = "[Unsupported content type]";
-    let parsedJSON: any = null;
-    let isJSONParsable = false;
-  
-    // Detect string or object content
-    if (typeof message.content === "string") {
-      messageContent = message.content;
+  const MessageItem = ({ message, isSent, senderAddress }: any) => {
+  const [splitDetail, setSplitDetail] = useState<any>(null);
+  const [isJSONParsable, setIsJSONParsable] = useState(false);
+  const [parsedJSON, setParsedJSON] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchSplitDetails = async () => {
       try {
-        parsedJSON = JSON.parse(message.content);
-        isJSONParsable = true;
+        const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
+        const result = await getSplitDetails(provider, message.conversationId, message.id);
+        console.log(address,result.memberAddresses.findIndex((address1: string) => address1.toLowerCase() == address?.toLowerCase()));//amount
+        if (!result.memberPaids[result.memberAddresses.findIndex((address1: string) => address1.toLowerCase() == address?.toLowerCase())]) {
+          console.log("Not Paid");
+          
+        } else {
+          console.log("Paid");
+          setIsJSONParsable(false);
+          message.content = "Already paid your split amount".toUpperCase()+message.content;
+        }
+      } catch (err) {
+        console.error("Failed to get split details", err);
+      }
+    };
+
+    // Only if content is string and maybe JSON
+    if (typeof message.content === "string") {
+      try {
+        const parsed = JSON.parse(message.content);
+        setParsedJSON(parsed);
+        setIsJSONParsable(true);
+        fetchSplitDetails();
       } catch {
-        isJSONParsable = false;
+        setIsJSONParsable(false);
       }
     } else if (typeof message.content === "object" && message.content !== null) {
-      parsedJSON = message.content;
-      messageContent = JSON.stringify(parsedJSON, null, 2);
-      isJSONParsable = true;
+      setParsedJSON(message.content);
+      setIsJSONParsable(true);
+      fetchSplitDetails();
     }
-    console.log(message.conversationId, message.id)
-    const words = messageContent.split(" ");
-    const wrappedContent = words.reduce((acc: string[], word: string) => {
-      if (acc.length === 0) {
-        return [word];
-      }
-      const lastLine = acc[acc.length - 1];
-      if (lastLine.length + word.length + 1 > 50) {
-        return [...acc, word];
-      }
-      acc[acc.length - 1] = `${lastLine} ${word}`;
-      return acc;
-    }, []);
-  
-    // Handler to trigger JSON execution
-    const handleExecute = () => {
-      console.log("Executing JSON message:", parsedJSON);
-      api
-        .get(process.env.NEXT_PUBLIC_BASE_URL + "/x402?ConversationId=" + message.conversationId + "&MessageId=" + message.id+"&address="+address)
-        .then(response => {
-          console.log(response);
+  }, [message]);
 
-          const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"]);
-          console.log(paymentResponse);
-        })
-        .catch(error => {
-          console.error(error);
-        });
-    };
-  
-    return (
-      <div
-        key={message.id || index}
-        className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}
-      >
-        <div
-          className={`max-w-[70%] rounded-2xl p-3 ${
-            isSent
-              ? "bg-blue-500 text-white rounded-br-none"
-              : "bg-gray-200 text-gray-800 rounded-bl-none"
-          } shadow-sm`}
-        >
-          <div className="space-y-1">
-            {wrappedContent.map((line, i) => (
-              <p key={i} className="text-sm break-words whitespace-pre-wrap">
-                {line}
-              </p>
-            ))}
-            {isJSONParsable && (
-              <button
-                onClick={handleExecute}
-                className={`mt-2 px-3 py-1 rounded text-xs font-medium ${
-                  isSent ? "bg-blue-300 text-blue-900" : "bg-gray-300 text-gray-700"
-                } hover:opacity-90`}
-              >
-                Execute
-              </button>
-            )}
-          </div>
-          <p
-            className={`text-xs mt-2 ${
-              isSent ? "text-blue-100" : "text-gray-500"
-            }`}
-          >
-            {isSent ? "You" : formatAddress(senderAddress)}
-          </p>
-        </div>
-      </div>
-    );
+  const messageContent =
+    typeof message.content === "string" ? message.content : JSON.stringify(message.content, null, 2);
+
+  const words = messageContent.split(" ");
+  const wrappedContent = words.reduce((acc: string[], word: string) => {
+    if (acc.length === 0) return [word];
+    const lastLine = acc[acc.length - 1];
+    if (lastLine.length + word.length + 1 > 50) return [...acc, word];
+    acc[acc.length - 1] = `${lastLine} ${word}`;
+    return acc;
+  }, []);
+
+  const handleExecute = () => {
+    console.log("Executing JSON message:", parsedJSON);
+    api
+      .get(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/x402?ConversationId=${message.conversationId}&MessageId=${message.id}&address=${address}`
+      )
+      .then((response) => {
+        const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"]);
+        console.log(paymentResponse);
+      })
+      .catch(console.error);
   };
+
+  return (
+    <div
+      key={message.id}
+      className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}
+    >
+      <div
+        className={`max-w-[70%] rounded-2xl p-3 ${
+          isSent
+            ? "bg-blue-500 text-white rounded-br-none"
+            : "bg-gray-200 text-gray-800 rounded-bl-none"
+        } shadow-sm`}
+      >
+        <div className="space-y-1">
+          {wrappedContent.map((line: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<AwaitedReactNode> | null | undefined, i: Key | null | undefined) => (
+            <p key={i} className="text-sm break-words whitespace-pre-wrap">
+              {line}
+            </p>
+          ))}
+          {isJSONParsable && (
+            <button
+              onClick={handleExecute}
+              className={`mt-2 px-3 py-1 rounded text-xs font-medium ${
+                isSent ? "bg-blue-300 text-blue-900" : "bg-gray-300 text-gray-700"
+              } hover:opacity-90`}
+            >
+              Execute
+            </button>
+          )}
+        </div>
+        <p
+          className={`text-xs mt-2 ${
+            isSent ? "text-blue-100" : "text-gray-500"
+          }`}
+        >
+          {isSent ? "You" : formatAddress(senderAddress)}
+        </p>
+      </div>
+    </div>
+  );
+};
   
 
   const NewConversationModal = ({
@@ -1235,7 +1247,7 @@ export default function Home() {
                     </p>
                   ) : (
                     messages.map((message, index) =>
-                      renderMessage(message, index)
+                      <MessageItem key={index} message={message} />
                     )
                   )}
                 </div>

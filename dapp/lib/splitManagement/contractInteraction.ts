@@ -53,7 +53,7 @@ export async function getSplitDetails(
 ): Promise<any> {
   const contract = getContract(provider);
   const result = await contract.getSplitDetails(conversationId, messageId);
-
+  console.log(result);
   return {
     totalAmount: result.totalAmount ? result.totalAmount.toString() : result[0]?.toString(),
     initiatorAddress: result.initiatorAddress || result[1],
