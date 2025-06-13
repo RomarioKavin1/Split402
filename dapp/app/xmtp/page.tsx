@@ -53,6 +53,7 @@ export default function Home() {
     messages: false,
     send: false,
   });
+  const [lastMessageId, setLastMessageId] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
@@ -495,7 +496,8 @@ export default function Home() {
 
       try {
         setLoading((prev) => ({ ...prev, sending: true }));
-        await selectedConversation.send(newMessage);
+        const messageId = await selectedConversation.send(newMessage);
+        setLastMessageId(messageId.toString());
 
         setNewMessage("");
 
@@ -511,7 +513,41 @@ export default function Home() {
     },
     [client, selectedConversation, newMessage]
   );
-
+  const sendMessage = useCallback(
+    async (message: string) => {
+      if (!client ) {
+        console.error("Client is not initialized");
+        return null;
+      }
+      if (!selectedConversation) {
+        console.error("Selected conversation is not initialized");
+        return null;
+      }
+      if (!message.trim()) {
+        console.error("Message is empty");
+        return null;
+      }
+  
+      try {
+        setLoading((prev) => ({ ...prev, sending: true }));
+        const messageId = await selectedConversation.send(message);
+        setLastMessageId(messageId.toString());
+        console.log("Message sent with ID:", messageId);
+        await selectedConversation.sync();
+        const updatedMessages = await selectedConversation.messages();
+        setMessages(updatedMessages);
+  
+        return messageId.toString();
+      } catch (error) {
+        console.error("Error sending message:", error);
+        return null;
+      } finally {
+        setLoading((prev) => ({ ...prev, sending: false }));
+      }
+    },
+    [client, selectedConversation]
+  );
+  
   const handleCreateConversation = async () => {
     if (!client || !newRecipient.trim()) return;
     try {
@@ -1110,13 +1146,19 @@ export default function Home() {
       </button>
     </div>
     <SplitModal
-      isOpen={isSplitModalOpen}
-      onClose={() => setIsSplitModalOpen(false)}
-      signer={splitSigner}
-      initiatorAddress={address || ""}
-      conversationId={selectedConversation.id}
-      members={members}
-    />
+  isOpen={isSplitModalOpen}
+  onClose={() => setIsSplitModalOpen(false)}
+  signer={splitSigner}
+  initiatorAddress={address || ""}
+  conversationId={selectedConversation.id}
+  members={members}
+  onBeforeCreate={async (input) => {
+    console.log("onBeforeCreate", input);
+    const id = await sendMessage(JSON.stringify(input));
+  return id; // ensure lastMessageId is set after send
+  }}
+/>
+
     <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-semibold">
@@ -1184,3 +1226,4 @@ export default function Home() {
     </>
   );
 }
+
