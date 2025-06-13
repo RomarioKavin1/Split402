@@ -7,15 +7,16 @@ import {
   Identifier,
 } from "@xmtp/browser-sdk";
 import { useCallback, useEffect, useRef, useState, Fragment } from "react";
-import { useAccount } from "wagmi";
-import { ethers } from "ethers";
+import { useAccount, useConnectorClient, useWalletClient } from 'wagmi';
+import { ethers, Wallet } from "ethers";
 
 import { initXMTP } from "../../lib/xmtpClient";
 import { listConversations, getMessages } from "../../lib/messaging";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import SplitModal from "../../components/SplitModal";
 import { Dialog, Transition } from "@headlessui/react";
-
+import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
+import axios from "axios";
 // We need to extend the DecodedMessage type to include senderAddress, which is present at runtime
 interface RuntimeDecodedMessage extends DecodedMessage {
   senderAddress: string;
@@ -29,9 +30,23 @@ enum NewConversationType {
 // Define types
 type AnyConversation = Conversation<any>;
 type ConsentState = "allowed" | "denied" | "unknown";
-
+export function useWagmiAccount() {
+  const { data: walletClient } = useWalletClient()
+  return walletClient // Pass the entire walletClient, not just the account
+}
 export default function Home() {
-  const { address, isConnected } = useAccount();
+  // const { address, isConnected } = useAccount();
+    const { address,isConnected } = useAccount()
+  const { data: connectorClient } = useConnectorClient()
+  
+  // For more advanced usage, you can get the full account from the connector
+  const account = useWagmiAccount()
+  const api = withPaymentInterceptor(
+    axios.create({
+      baseURL:process.env.NEXT_PUBLIC_BASE_URL,
+    }),
+    account as any,
+  );
   const [members, setMembers] = useState<any>([]);
   const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<AnyConversation[]>([]);
@@ -333,6 +348,8 @@ export default function Home() {
     if (isConnected && address && !client) {
       setLoading((prev) => ({ ...prev, client: true }));
       try {
+        // const [account] = await window.ethereum!.request({ method: 'eth_requestAccounts' });
+        // setAccount(account);
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const xmtp = await initXMTP(signer);
@@ -731,22 +748,31 @@ export default function Home() {
 
   const renderMessage = (message: any, index: number) => {
     if (!message) return null;
-
-    // Get the current user's inbox ID
+  
     const currentInboxId = client?.inboxId;
     const isSent = message.senderInboxId === currentInboxId;
     const senderAddress =
       messageAddresses[message.senderInboxId || ""] || message.senderAddress;
-
-    // Handle different types of message content
+  
     let messageContent = "[Unsupported content type]";
+    let parsedJSON: any = null;
+    let isJSONParsable = false;
+  
+    // Detect string or object content
     if (typeof message.content === "string") {
       messageContent = message.content;
-    } else if (message.content && typeof message.content === "object") {
-      messageContent = JSON.stringify(message.content);
+      try {
+        parsedJSON = JSON.parse(message.content);
+        isJSONParsable = true;
+      } catch {
+        isJSONParsable = false;
+      }
+    } else if (typeof message.content === "object" && message.content !== null) {
+      parsedJSON = message.content;
+      messageContent = JSON.stringify(parsedJSON, null, 2);
+      isJSONParsable = true;
     }
-
-    // Split long messages into words and wrap them
+    console.log(message.conversationId, message.id)
     const words = messageContent.split(" ");
     const wrappedContent = words.reduce((acc: string[], word: string) => {
       if (acc.length === 0) {
@@ -754,13 +780,28 @@ export default function Home() {
       }
       const lastLine = acc[acc.length - 1];
       if (lastLine.length + word.length + 1 > 50) {
-        // Adjust this number to control line length
         return [...acc, word];
       }
       acc[acc.length - 1] = `${lastLine} ${word}`;
       return acc;
     }, []);
+  
+    // Handler to trigger JSON execution
+    const handleExecute = () => {
+      console.log("Executing JSON message:", parsedJSON);
+      api
+        .get(process.env.NEXT_PUBLIC_BASE_URL + "/x402?ConversationId=" + message.conversationId + "&MessageId=" + message.id+"&address="+address)
+        .then(response => {
+          console.log(response);
 
+          const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"]);
+          console.log(paymentResponse);
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    };
+  
     return (
       <div
         key={message.id || index}
@@ -779,6 +820,16 @@ export default function Home() {
                 {line}
               </p>
             ))}
+            {isJSONParsable && (
+              <button
+                onClick={handleExecute}
+                className={`mt-2 px-3 py-1 rounded text-xs font-medium ${
+                  isSent ? "bg-blue-300 text-blue-900" : "bg-gray-300 text-gray-700"
+                } hover:opacity-90`}
+              >
+                Execute
+              </button>
+            )}
           </div>
           <p
             className={`text-xs mt-2 ${
@@ -791,6 +842,7 @@ export default function Home() {
       </div>
     );
   };
+  
 
   const NewConversationModal = ({
     isOpen,

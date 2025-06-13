@@ -1,0 +1,303 @@
+[
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "conversationIdHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "messageId",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        }
+      ],
+      "name": "MemberPaid",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "conversationIdHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "messageId",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "initiator",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "SplitCreated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "conversationId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "messageId",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "initiatorAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "initiatorAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address[]",
+          "name": "memberAddresses",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "memberAmounts",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "createSplit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "conversationId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "messageId",
+          "type": "string"
+        }
+      ],
+      "name": "getSplitDetails",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "initiatorAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "initiatorAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "initiatorPaid",
+          "type": "bool"
+        },
+        {
+          "internalType": "address[]",
+          "name": "memberAddresses",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "memberAmounts",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "bool[]",
+          "name": "memberPaids",
+          "type": "bool[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "conversationId",
+          "type": "string"
+        }
+      ],
+      "name": "getSplitsByConversationId",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "messageId",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "initiatorAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "initiatorAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "initiatorPaid",
+              "type": "bool"
+            },
+            {
+              "internalType": "address[]",
+              "name": "memberAddresses",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "memberAmounts",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bool[]",
+              "name": "memberPaids",
+              "type": "bool[]"
+            }
+          ],
+          "internalType": "struct PaymentSplitterRegistry.SplitView[]",
+          "name": "splitsView",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "globalSplitCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "conversationId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "messageId",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        }
+      ],
+      "name": "markAsPaid",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "name": "splits",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "messageId",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "initiatorAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "paid",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct PaymentSplitterRegistry.Initiator",
+          "name": "initiator",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]

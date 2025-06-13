@@ -3,7 +3,7 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { mainnet, polygon, optimism, arbitrum, base } from "wagmi/chains";
+import { mainnet, polygon, optimism, arbitrum, base,baseSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import React from "react";
 
@@ -13,7 +13,7 @@ const projectId = "YOUR_PROJECT_ID";
 const config = getDefaultConfig({
   appName: "My RainbowKit App",
   projectId: projectId,
-  chains: [mainnet, polygon, optimism, arbitrum, base],
+  chains: [mainnet, polygon, optimism, arbitrum, base,baseSepolia],
   ssr: true,
 });
 const queryClient = new QueryClient();
