@@ -1,4 +1,4 @@
-import { AgentRequest, AgentResponse } from "@/app/types/api";
+import { AgentRequest, AgentResponse } from "@/lib/types/api";
 import { NextResponse } from "next/server";
 import { createAgent } from "./create-agent";
 import { Message, generateId, generateText } from "ai";
@@ -33,7 +33,7 @@ const messages: Message[] = [];
  * }
  */
 export async function POST(
-  req: Request & { json: () => Promise<AgentRequest> },
+  req: Request & { json: () => Promise<AgentRequest> }
 ): Promise<NextResponse<AgentResponse>> {
   try {
     // 1. Extract user message from the request body
