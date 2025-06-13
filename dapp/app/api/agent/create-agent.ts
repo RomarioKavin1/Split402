@@ -48,10 +48,6 @@ export async function createAgent(): Promise<Agent> {
     throw new Error("I need an OPENAI_API_KEY in your .env file to power my intelligence.");
   }
 
-  if (!process.env.OPENAI_API_BASE) {
-    process.env.OPENAI_API_BASE = "https://openrouter.ai/api/v1";
-  }
-
   const { agentkit, walletProvider } = await prepareAgentkitAndWalletProvider();
 
   try {

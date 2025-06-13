@@ -2,8 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createWorker } from "tesseract.js";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function ScanPage() {
+  const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -112,21 +115,44 @@ export default function ScanPage() {
     startCamera();
   };
 
-  // Function to process image with OCR
+  // Function to process image with OCR and bill recognition
   const processImage = async () => {
     if (!image) return;
 
     setIsProcessing(true);
     try {
+      // First, perform OCR
       const worker = await createWorker('eng');
-      const { data: { text } } = await worker.recognize(image);
-      setText(text);
+      const { data: { text: ocrText } } = await worker.recognize(image);
       await worker.terminate();
+      setText(ocrText);
+
+      // Then, send to bill recognition agent
+      const response = await fetch("/api/agent/bill", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: ocrText }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process bill");
+      }
+
+      const billData = await response.json();
+      
+      // Save bill data to localStorage
+      localStorage.setItem("billData", JSON.stringify(billData));
+      
+      // Navigate to split page
+      router.push("/split");
     } catch (error) {
       console.error("Error processing image:", error);
-      setText("Error processing image. Please try again.");
+      toast.error("Error processing bill. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   // Cleanup camera on component unmount
