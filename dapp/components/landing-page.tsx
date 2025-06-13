@@ -1,53 +1,47 @@
-"use client"
-import { useRouter } from "next/navigation"
-import { useState, useRef } from "react"
-import { ConnectWalletButton } from "./connect-wallet-button"
-import { motion, useScroll, useTransform, useInView } from "framer-motion"
-import { AnimatedBackground } from "./animated-background"
-import { AnimatedBlob } from "./animated-blob"
-import { AnimatedGradient } from "./animated-gradient"
-import { ArrowDown, ArrowRight } from "lucide-react"
-import { PulseEffect } from "./pulse-effect"
-import { GlowText } from "./glow-text"
-import { ColorShiftButton } from "./color-shift-button"
+"use client";
+import { useRouter } from "next/navigation";
+import { useState, useRef } from "react";
+import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { AnimatedBackground } from "./animated-background";
+import { AnimatedBlob } from "./animated-blob";
+import { ArrowDown, ArrowRight } from "lucide-react";
+import { PulseEffect } from "./pulse-effect";
+import { GlowText } from "./glow-text";
+import { ColorShiftButton } from "./color-shift-button";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 export function LandingPage() {
-  const router = useRouter()
-  const [isConnecting, setIsConnecting] = useState(false)
-  const featuresRef = useRef<HTMLDivElement>(null)
-  const featuresSectionRef = useRef<HTMLDivElement>(null)
-  const isInView = useInView(featuresSectionRef, { once: false, amount: 0.3 })
+  const router = useRouter();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const { address, isConnected } = useAccount();
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const featuresSectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(featuresSectionRef, { once: false, amount: 0.3 });
 
   const { scrollYProgress } = useScroll({
     target: featuresRef,
     offset: ["start end", "end start"],
-  })
+  });
 
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1])
-  const y = useTransform(scrollYProgress, [0, 0.5], [50, 0])
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
+  const y = useTransform(scrollYProgress, [0, 0.5], [50, 0]);
 
-  const handleConnect = () => {
-    setIsConnecting(true)
-    // Simulate wallet connection
-    setTimeout(() => {
-      setIsConnecting(false)
-      router.push("/register")
-    }, 1500)
-  }
+  const handleLaunchDapp = () => {
+    router.push("/app");
+  };
 
   const scrollToFeatures = () => {
-    featuresRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    featuresRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
-      <AnimatedBackground />
-      <AnimatedGradient />
+    <div className="min-h-screen bg-zinc-950 text-white overflow-x-hidden relative">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-zinc-950 -z-10" />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex flex-col items-center justify-center p-8">
-        <AnimatedBlob className="top-10 right-10 opacity-50" color="rgba(65, 105, 225, 0.15)" />
-        <AnimatedBlob className="bottom-20 left-10 opacity-30" color="rgba(138, 43, 226, 0.15)" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))] -z-10" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -71,21 +65,53 @@ export function LandingPage() {
                 ease: "easeInOut",
               }}
             >
-              <h1 className="text-5xl font-medium tracking-tight">
-                <GlowText color="rgba(138, 43, 226, 0.7)">Split</GlowText>
-                <GlowText color="rgba(0, 206, 209, 0.7)">402</GlowText>
+              <h1 className="text-6xl font-medium tracking-tight">
+                <span className="text-blue-400">Split</span>
+                <span className="text-purple-400">402</span>
               </h1>
             </motion.div>
-            <p className="text-zinc-400 text-lg font-light">Split bills with friends using web3</p>
+            <p className="text-zinc-400 text-lg font-light">
+              Split bills with friends using web3
+            </p>
           </motion.div>
 
           <div className="flex flex-col items-center space-y-8 max-w-xs mx-auto">
             <p className="text-sm text-zinc-500 font-light">
-              Powered by <span className="text-blue-400">x402</span>, <span className="text-purple-400">XMTP</span>, and{" "}
+              Powered by <span className="text-blue-400">x402</span>,{" "}
+              <span className="text-purple-400">XMTP</span>, and{" "}
               <span className="text-teal-400">Base</span>
             </p>
 
-            <ConnectWalletButton onClick={handleConnect} isLoading={isConnecting} />
+            <div className="space-y-4 w-full">
+              <ConnectButton />
+              {isConnected && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <button
+                    onClick={handleLaunchDapp}
+                    className="w-full px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-100 transition-colors flex items-center justify-center"
+                  >
+                    <span>Launch Dapp</span>
+                    <motion.div
+                      animate={{
+                        x: [0, 3, 0],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut",
+                      }}
+                      className="ml-2"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </motion.div>
+                  </button>
+                </motion.div>
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -119,8 +145,11 @@ export function LandingPage() {
       {/* Features Section */}
       <section ref={featuresRef} className="min-h-screen py-20 px-8">
         <div className="max-w-4xl mx-auto">
-          <motion.h2 style={{ opacity, y }} className="text-3xl font-medium mb-16 text-center">
-            <GlowText color="rgba(0, 206, 209, 0.7)">Split bills seamlessly</GlowText>
+          <motion.h2
+            style={{ opacity, y }}
+            className="text-3xl font-medium mb-16 text-center"
+          >
+            <span className="text-blue-400">Split bills seamlessly</span>
           </motion.h2>
 
           <div ref={featuresSectionRef} className="space-y-24">
@@ -130,7 +159,7 @@ export function LandingPage() {
               isInView={isInView}
               delay={0.2}
               index={0}
-              color="rgba(0, 206, 209, 0.2)"
+              color="text-blue-400"
               emoji="📷"
             />
 
@@ -140,7 +169,7 @@ export function LandingPage() {
               isInView={isInView}
               delay={0.4}
               index={1}
-              color="rgba(138, 43, 226, 0.2)"
+              color="text-purple-400"
               emoji="👥"
             />
 
@@ -150,7 +179,7 @@ export function LandingPage() {
               isInView={isInView}
               delay={0.6}
               index={2}
-              color="rgba(65, 105, 225, 0.2)"
+              color="text-teal-400"
               emoji="🤖"
             />
           </div>
@@ -167,25 +196,21 @@ export function LandingPage() {
             viewport={{ once: true, amount: 0.3 }}
             className="relative"
           >
-            <div className="relative h-[500px] w-full rounded-3xl overflow-hidden backdrop-blur-sm bg-zinc-900/30 border border-zinc-800/50">
+            <div className="relative h-[500px] w-full rounded-3xl overflow-hidden bg-zinc-900/30 border border-zinc-800/50">
               <div className="absolute inset-0 bg-[url('/placeholder.svg?height=1000&width=500')] bg-cover bg-center opacity-60"></div>
 
-              <PulseEffect className="absolute top-1/4 left-1/4" size={100} delay={0} color="rgba(0, 206, 209, 0.3)" />
-              <PulseEffect
-                className="absolute bottom-1/3 right-1/3"
-                size={80}
-                delay={0.5}
-                color="rgba(138, 43, 226, 0.3)"
-              />
-              <PulseEffect className="absolute top-2/3 left-1/2" size={120} delay={1} color="rgba(65, 105, 225, 0.3)" />
-
               <div className="absolute bottom-8 left-8 right-8 z-20">
-                <h3 className="text-xl font-medium mb-2">Ready to get started?</h3>
+                <h3 className="text-xl font-medium mb-2">
+                  Ready to get started?
+                </h3>
                 <p className="text-sm text-zinc-400 font-light mb-6">
                   Connect your wallet and start splitting bills with crypto
                 </p>
 
-                <ColorShiftButton onClick={() => router.push("/register")} variant="secondary">
+                <button
+                  onClick={() => router.push("/register")}
+                  className="w-full px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-100 transition-colors flex items-center justify-center"
+                >
                   <span>Get Started</span>
                   <motion.div
                     animate={{
@@ -200,7 +225,7 @@ export function LandingPage() {
                   >
                     <ArrowRight className="h-4 w-4" />
                   </motion.div>
-                </ColorShiftButton>
+                </button>
               </div>
             </div>
           </motion.div>
@@ -211,35 +236,43 @@ export function LandingPage() {
         © 2023 Split402. All rights reserved.
       </footer>
     </div>
-  )
+  );
 }
 
 interface FeatureProps {
-  title: string
-  description: string
-  isInView: boolean
-  delay: number
-  index: number
-  color: string
-  emoji: string
+  title: string;
+  description: string;
+  isInView: boolean;
+  delay: number;
+  index: number;
+  color: string;
+  emoji: string;
 }
 
-function Feature({ title, description, isInView, delay, index, color, emoji }: FeatureProps) {
-  const isEven = index % 2 === 0
+function Feature({
+  title,
+  description,
+  isInView,
+  delay,
+  index,
+  color,
+  emoji,
+}: FeatureProps) {
+  const isEven = index % 2 === 0;
 
   return (
     <motion.div
       initial={{ opacity: 0, x: isEven ? -30 : 30 }}
-      animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: isEven ? -30 : 30 }}
+      animate={
+        isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: isEven ? -30 : 30 }
+      }
       transition={{ duration: 0.8, delay }}
-      className={`flex flex-col ${isEven ? "md:flex-row" : "md:flex-row-reverse"} items-center gap-8`}
+      className={`flex flex-col ${
+        isEven ? "md:flex-row" : "md:flex-row-reverse"
+      } items-center gap-8`}
     >
       <div className="w-full md:w-1/2">
-        <div
-          className="aspect-square max-w-[250px] mx-auto rounded-2xl backdrop-blur-sm border border-zinc-800/50 flex items-center justify-center relative overflow-hidden"
-          style={{ backgroundColor: color }}
-        >
-          <PulseEffect size={150} color={color} />
+        <div className="aspect-square max-w-[250px] mx-auto rounded-2xl bg-zinc-900/30 border border-zinc-800/50 flex items-center justify-center relative overflow-hidden">
           <motion.div
             animate={{
               rotate: [0, 10, 0, -10, 0],
@@ -258,11 +291,9 @@ function Feature({ title, description, isInView, delay, index, color, emoji }: F
       </div>
 
       <div className="w-full md:w-1/2 space-y-4">
-        <h3 className="text-2xl font-medium">
-          <GlowText color={color.replace("0.2", "0.7")}>{title}</GlowText>
-        </h3>
+        <h3 className={`text-2xl font-medium ${color}`}>{title}</h3>
         <p className="text-zinc-400 font-light">{description}</p>
       </div>
     </motion.div>
-  )
+  );
 }
