@@ -15,17 +15,19 @@ import { listConversations, getMessages } from "../../lib/messaging";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Dialog, Transition } from "@headlessui/react";
 
-type AnyConversation = Conversation<any>;
 // We need to extend the DecodedMessage type to include senderAddress, which is present at runtime
 interface RuntimeDecodedMessage extends DecodedMessage {
   senderAddress: string;
-  conversation: Conversation<any>;
 }
 
 enum NewConversationType {
   Direct = "direct",
   Group = "group",
 }
+
+// Define types
+type AnyConversation = Conversation<any>;
+type ConsentState = "allowed" | "denied" | "unknown";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
@@ -60,6 +62,17 @@ export default function Home() {
     useState<NewConversationType>(NewConversationType.Direct);
   const [newRecipient, setNewRecipient] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [conversationMembers, setConversationMembers] = useState<string[]>([]);
+
+  // Add state for rendered conversations
+  const [renderedConversations, setRenderedConversations] = useState<
+    JSX.Element[]
+  >([]);
+
+  // Add new state for sync status
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
 
   const formatAddress = (addr: string | undefined): string =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
@@ -67,6 +80,70 @@ export default function Home() {
     typeof msg.content === "string"
       ? msg.content
       : "[Unsupported content type]";
+
+  const getGroupMembersWithAddresses = async (convo: AnyConversation) => {
+    if (!client || !convo) return [];
+
+    try {
+      const members = await (convo as any).members();
+      if (!members || members.length <= 1) return [];
+
+      // Filter out the current user and handle different member formats
+      const otherMembers = members.filter((m: any) => {
+        if (!m) return false;
+
+        let memberAddress: string | undefined;
+        if (typeof m === "string") {
+          memberAddress = m;
+        } else if (typeof m === "object" && m !== null) {
+          memberAddress = m.address || m.identifier;
+        }
+
+        if (!memberAddress) return false;
+
+        const currentAddress = (client as any).address;
+        if (!currentAddress) return false;
+
+        return memberAddress.toLowerCase() !== currentAddress.toLowerCase();
+      });
+
+      if (otherMembers.length === 0) return [];
+
+      // Get inbox states for all members
+      const inboxStates = await Promise.all(
+        otherMembers.map(async (member: any) => {
+          try {
+            let memberAddress: string;
+            if (typeof member === "string") {
+              memberAddress = member;
+            } else if (typeof member === "object" && member !== null) {
+              memberAddress = member.address || member.identifier;
+            } else {
+              return "";
+            }
+
+            if (!memberAddress) return "";
+
+            const inboxState = await client.preferences.inboxStateFromInboxIds([
+              memberAddress,
+            ]);
+            return (
+              inboxState[0]?.accountIdentifiers?.[0]?.identifier ||
+              memberAddress
+            );
+          } catch (e) {
+            console.error("Error getting inbox state for member:", e);
+            return "";
+          }
+        })
+      );
+
+      return inboxStates.filter(Boolean);
+    } catch (e) {
+      console.error("Error getting group members:", e);
+      return [];
+    }
+  };
 
   const formatConversationName = async (
     convo: AnyConversation
@@ -97,6 +174,47 @@ export default function Home() {
       try {
         const members = await (convo as any).members();
         if (members && members.length > 0) {
+          if (members.length === 1) {
+            return "Empty Group";
+          } else if (members.length === 2) {
+            // For 2 members, show it as a DM
+            const otherMember = members.find((m: any) => {
+              if (!m) return false;
+
+              let memberAddress: string | undefined;
+              if (typeof m === "string") {
+                memberAddress = m;
+              } else if (typeof m === "object" && m !== null) {
+                memberAddress = m.address || m.identifier;
+              }
+
+              if (!memberAddress) return false;
+
+              const currentAddress = (client as any).address;
+              if (!currentAddress) return false;
+
+              return (
+                memberAddress.toLowerCase() !== currentAddress.toLowerCase()
+              );
+            });
+
+            if (otherMember) {
+              let memberAddress: string;
+              if (typeof otherMember === "string") {
+                memberAddress = otherMember;
+              } else if (
+                typeof otherMember === "object" &&
+                otherMember !== null
+              ) {
+                memberAddress = otherMember.address || otherMember.identifier;
+              } else {
+                return "Unknown";
+              }
+
+              return formatAddress(memberAddress);
+            }
+          }
+          // For more than 2 members, show member count
           return `Group (${members.length} members)`;
         }
       } catch (e) {
@@ -138,6 +256,11 @@ export default function Home() {
       try {
         const members = await (convo as any).members();
         if (members && members.length > 0) {
+          if (members.length === 1) {
+            return "Empty Group";
+          } else if (members.length === 2) {
+            return "Direct Message";
+          }
           return "Group Chat";
         }
       } catch (e) {
@@ -237,25 +360,19 @@ export default function Home() {
       for await (const message of stream) {
         const runtimeMessage = message as RuntimeDecodedMessage;
         console.log("Raw message:", message);
+        setConversationMembers((prevMembers) => {
+          const newMembers = [...prevMembers, runtimeMessage.senderAddress];
+          return newMembers;
+        });
 
         // Ensure we have all required fields
         if (!runtimeMessage.senderAddress) {
           runtimeMessage.senderAddress =
             message.senderAddress || (client as any).address;
         }
-        if (!runtimeMessage.conversation) {
-          runtimeMessage.conversation = message.conversation;
-        }
-
-        console.log("Processed message:", {
-          from: runtimeMessage.senderAddress,
-          to: (client as any).address,
-          content: runtimeMessage.content,
-          conversationId: runtimeMessage.conversation?.id,
-        });
 
         if (runtimeMessage.senderAddress !== (client as any).address) {
-          if (runtimeMessage.conversation?.id === selectedConversation?.id) {
+          if (runtimeMessage.conversationId === selectedConversation?.id) {
             setMessages((prevMessages) => [...prevMessages, runtimeMessage]);
           } else {
             console.log(
@@ -323,50 +440,55 @@ export default function Home() {
   // Update the conversation selection handler
   const handleConversationSelect = useCallback(
     async (conversation: AnyConversation) => {
-      setSelectedConversation(conversation);
-      await loadMessages(conversation);
+      if (!client) return;
+
+      try {
+        setSelectedConversation(conversation);
+        setMessages([]);
+        setLoading((prev) => ({ ...prev, messages: true }));
+
+        // Sync the selected conversation
+        await conversation.sync();
+
+        const messages = await conversation.messages();
+        setMessages(messages);
+      } catch (error) {
+        console.error("Error selecting conversation:", error);
+      } finally {
+        setLoading((prev) => ({ ...prev, messages: false }));
+      }
     },
-    [loadMessages]
+    [client]
   );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation || !client) return;
-    setLoading((prev) => ({ ...prev, send: true }));
-    try {
-      console.log("Sending message to conversation:", selectedConversation.id);
-      const sentMessage = await selectedConversation.send(newMessage);
-      console.log("Message sent successfully:", sentMessage);
-      setNewMessage("");
+  const handleSendMessage = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) {
+        e.preventDefault();
+      }
+      if (!client || !selectedConversation || !newMessage.trim()) return;
 
-      // Add the sent message to the local state
-      const runtimeMessage: RuntimeDecodedMessage = {
-        content: newMessage,
-        senderAddress: (client as any).address,
-        conversation: selectedConversation,
-        id:
-          typeof sentMessage === "string"
-            ? sentMessage
-            : Math.random().toString(36).substring(7),
-      } as RuntimeDecodedMessage;
+      try {
+        setLoading((prev) => ({ ...prev, sending: true }));
+        await selectedConversation.send(newMessage);
+        setNewMessage("");
 
-      setMessages((prevMessages) => [...prevMessages, runtimeMessage]);
-
-      // Reload messages to ensure synchronization
-      const newMsgs = await getMessages(selectedConversation);
-      console.log("Reloaded messages:", newMsgs);
-      setMessages(newMsgs as RuntimeDecodedMessage[]);
-    } catch (e) {
-      console.error("Failed to send message:", e);
-      alert("Failed to send message: " + (e as Error).message);
-    } finally {
-      setLoading((prev) => ({ ...prev, send: false }));
-    }
-  };
+        // Sync the conversation after sending
+        await selectedConversation.sync();
+        const updatedMessages = await selectedConversation.messages();
+        setMessages(updatedMessages);
+      } catch (error) {
+        console.error("Error sending message:", error);
+      } finally {
+        setLoading((prev) => ({ ...prev, sending: false }));
+      }
+    },
+    [client, selectedConversation, newMessage]
+  );
 
   const handleCreateConversation = async () => {
     if (!client || !newRecipient.trim()) return;
@@ -377,7 +499,6 @@ export default function Home() {
           "Checking if address is on XMTP network:",
           recipientAddress
         );
-        console.log("Client environment:", (client as any).env);
 
         try {
           const canMessageMap = await Client.canMessage(
@@ -390,13 +511,10 @@ export default function Home() {
             "dev"
           );
 
-          console.log("Can message result:", canMessageMap);
-          // Convert both addresses to lowercase for comparison
           const canMessage = canMessageMap.get(recipientAddress.toLowerCase());
           console.log("Can message this address:", canMessage);
 
           if (!canMessage) {
-            console.log("Address not found on XMTP network:", recipientAddress);
             alert(
               "Address is not on the XMTP network. Make sure the address has registered with XMTP."
             );
@@ -404,10 +522,10 @@ export default function Home() {
           }
 
           console.log("Creating new DM conversation with:", recipientAddress);
-          const newConvo = await (client as any).conversations.newDm(
-            recipientAddress,
-            { env: "dev" }
-          );
+          const newConvo = await client.conversations.newDmWithIdentifier({
+            identifier: recipientAddress,
+            identifierKind: "Ethereum",
+          });
           console.log("New conversation created:", newConvo);
           await loadConversations();
           setSelectedConversation(newConvo);
@@ -420,11 +538,20 @@ export default function Home() {
           return;
         }
       } else {
-        const recipients = newRecipient
-          .split(",")
-          .map((r) => ethers.getAddress(r.trim()));
-        console.log("Checking if addresses are on XMTP network:", recipients);
-        console.log("Client environment:", (client as any).env);
+        // Split addresses and trim whitespace
+        const addresses = newRecipient.split(",").map((addr) => addr.trim());
+        console.log("Processing addresses:", addresses);
+
+        // Validate each address
+        const recipients = addresses.map((addr) => {
+          try {
+            return ethers.getAddress(addr);
+          } catch (e) {
+            throw new Error(`Invalid address: ${addr}`);
+          }
+        });
+
+        console.log("Validated addresses:", recipients);
 
         try {
           const canMessageMap = await Client.canMessage(
@@ -435,15 +562,11 @@ export default function Home() {
             "dev"
           );
 
-          console.log("Can message results:", canMessageMap);
-          // Convert all addresses to lowercase for comparison
           const allCanMessage = recipients.every((recipient) =>
             canMessageMap.get(recipient.toLowerCase())
           );
-          console.log("Can message all addresses:", allCanMessage);
 
           if (!allCanMessage) {
-            console.log("One or more addresses not found on XMTP network");
             alert(
               "One or more addresses are not on the XMTP network. Make sure all addresses have registered with XMTP."
             );
@@ -451,9 +574,12 @@ export default function Home() {
           }
 
           console.log("Creating new group conversation with:", recipients);
-          const newConvo = await (
-            client as any
-          ).conversations.newGroupWithIdentifiers(recipients, { env: "dev" });
+          const newConvo = await client.conversations.newGroupWithIdentifiers(
+            recipients.map((recipient) => ({
+              identifier: recipient,
+              identifierKind: "Ethereum",
+            }))
+          );
           console.log("New group conversation created:", newConvo);
           await loadConversations();
           setSelectedConversation(newConvo);
@@ -474,90 +600,44 @@ export default function Home() {
     }
   };
 
-  const handleNewConversation = async (address: string) => {
-    if (!client || !address) return;
-    setLoading((prev) => ({ ...prev, newConversation: true }));
-    try {
-      // Check if we can message this address
-      const canMessage = await client.canMessage([
-        {
+  const handleNewConversation = useCallback(
+    async (address: string) => {
+      if (!client) return;
+
+      try {
+        setLoading((prev) => ({ ...prev, newConversation: true }));
+
+        // Create new conversation
+        const conversation = await client.conversations.newDmWithIdentifier({
           identifier: address,
           identifierKind: "Ethereum",
-        },
-      ]);
-
-      if (!canMessage.get(address.toLowerCase())) {
-        setError("This address is not on the XMTP network");
-        return;
-      }
-
-      // First, try to find an existing conversation with this address
-      const existingConversations = await listConversations(client);
-      console.log("Checking existing conversations:", existingConversations);
-
-      const existingConversation = existingConversations.find((convo) => {
-        // Get the peer address from the conversation object
-        const peerAddress =
-          (convo as any).peerAddress ||
-          (convo as any).peer?.address ||
-          (convo as any).peerAddresses?.[0];
-
-        console.log("Checking conversation:", {
-          id: convo.id,
-          peerAddress,
-          targetAddress: address,
         });
 
-        return (
-          peerAddress && peerAddress.toLowerCase() === address.toLowerCase()
-        );
-      });
+        // Sync all conversations
+        await client.conversations.sync();
 
-      if (existingConversation) {
-        console.log("Found existing conversation:", existingConversation.id);
-        setSelectedConversation(existingConversation);
+        // Update conversations list
+        const updatedConversations = await client.conversations.list();
+        setConversations(updatedConversations);
+
+        // Select the new conversation
+        setSelectedConversation(conversation);
+        setMessages([]);
+
         setIsModalOpen(false);
-        return;
+      } catch (error) {
+        console.error("Error creating conversation:", error);
+        if (error instanceof Error) {
+          alert(`Failed to create conversation: ${error.message}`);
+        } else {
+          alert("Failed to create conversation");
+        }
+      } finally {
+        setLoading((prev) => ({ ...prev, newConversation: false }));
       }
-
-      // If no existing conversation, create a new one directly with the address
-      console.log("Creating new DM conversation with address:", address);
-      const conversation = await client.conversations.newDmWithIdentifier({
-        identifier: address,
-        identifierKind: "Ethereum",
-      });
-      console.log("Created new conversation:", {
-        id: conversation.id,
-        peerAddress:
-          (conversation as any).peerAddress ||
-          (conversation as any).peer?.address ||
-          (conversation as any).peerAddresses?.[0],
-      });
-
-      // Add the new conversation to the list
-      setConversations((prev) => [conversation, ...prev]);
-      setSelectedConversation(conversation);
-
-      // Format the conversation name and type
-      const name = await formatConversationName(conversation);
-      const type = await getConversationType(conversation);
-      setConversationNames((prev) => ({ ...prev, [conversation.id]: name }));
-      setConversationTypes((prev) => ({ ...prev, [conversation.id]: type }));
-
-      setIsModalOpen(false);
-    } catch (e) {
-      console.error("Failed to create conversation:", e);
-      if ((e as Error).message.includes("NoModificationAllowedError")) {
-        setError(
-          "Please try again in a few seconds. The system is currently busy."
-        );
-      } else {
-        setError("Failed to create conversation: " + (e as Error).message);
-      }
-    } finally {
-      setLoading((prev) => ({ ...prev, newConversation: false }));
-    }
-  };
+    },
+    [client]
+  );
 
   // Add effect to fetch addresses for messages
   useEffect(() => {
@@ -608,18 +688,45 @@ export default function Home() {
       messageContent = JSON.stringify(message.content);
     }
 
+    // Split long messages into words and wrap them
+    const words = messageContent.split(" ");
+    const wrappedContent = words.reduce((acc: string[], word: string) => {
+      if (acc.length === 0) {
+        return [word];
+      }
+      const lastLine = acc[acc.length - 1];
+      if (lastLine.length + word.length + 1 > 50) {
+        // Adjust this number to control line length
+        return [...acc, word];
+      }
+      acc[acc.length - 1] = `${lastLine} ${word}`;
+      return acc;
+    }, []);
+
     return (
       <div
         key={message.id || index}
-        className={`flex ${isSent ? "justify-end" : "justify-start"}`}
+        className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}
       >
         <div
-          className={`max-w-[70%] rounded-lg p-3 ${
-            isSent ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"
-          }`}
+          className={`max-w-[70%] rounded-2xl p-3 ${
+            isSent
+              ? "bg-blue-500 text-white rounded-br-none"
+              : "bg-gray-200 text-gray-800 rounded-bl-none"
+          } shadow-sm`}
         >
-          <p className="text-sm">{messageContent}</p>
-          <p className="text-xs mt-1 opacity-70">
+          <div className="space-y-1">
+            {wrappedContent.map((line, i) => (
+              <p key={i} className="text-sm break-words whitespace-pre-wrap">
+                {line}
+              </p>
+            ))}
+          </div>
+          <p
+            className={`text-xs mt-2 ${
+              isSent ? "text-blue-100" : "text-gray-500"
+            }`}
+          >
             {isSent ? "You" : formatAddress(senderAddress)}
           </p>
         </div>
@@ -637,6 +744,8 @@ export default function Home() {
     const [address, setAddress] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [conversationType, setConversationType] =
+      useState<NewConversationType>(NewConversationType.Direct);
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -646,7 +755,14 @@ export default function Home() {
       setError(null);
 
       try {
-        await handleNewConversation(address);
+        if (conversationType === NewConversationType.Direct) {
+          await handleNewConversation(address);
+        } else {
+          console.log("Creating group chat with addresses:", address);
+          setNewConversationType(NewConversationType.Group);
+          setNewRecipient(address);
+          await handleCreateConversation();
+        }
         setAddress("");
         onClose();
       } catch (e) {
@@ -657,6 +773,11 @@ export default function Home() {
       }
     };
 
+    const handleTypeChange = (type: NewConversationType) => {
+      console.log("Changing conversation type to:", type);
+      setConversationType(type);
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -665,21 +786,56 @@ export default function Home() {
           <h2 className="text-xl font-bold mb-4">New Conversation</h2>
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value={NewConversationType.Direct}
+                    checked={conversationType === NewConversationType.Direct}
+                    onChange={() =>
+                      handleTypeChange(NewConversationType.Direct)
+                    }
+                    className="mr-2"
+                  />
+                  Direct Message
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value={NewConversationType.Group}
+                    checked={conversationType === NewConversationType.Group}
+                    onChange={() => handleTypeChange(NewConversationType.Group)}
+                    className="mr-2"
+                  />
+                  Group Chat
+                </label>
+              </div>
               <label
                 htmlFor="address"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Ethereum Address
+                {conversationType === NewConversationType.Direct
+                  ? "Ethereum Address"
+                  : "Ethereum Addresses (comma-separated)"}
               </label>
               <input
                 type="text"
                 id="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="0x..."
+                placeholder={
+                  conversationType === NewConversationType.Direct
+                    ? "0x..."
+                    : "0x..., 0x..., 0x..."
+                }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 required
               />
+              {conversationType === NewConversationType.Group && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Enter multiple addresses separated by commas
+                </p>
+              )}
             </div>
             {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
             <div className="flex justify-end gap-2">
@@ -704,35 +860,168 @@ export default function Home() {
     );
   };
 
-  const syncAllConversations = async () => {
-    if (!client) return;
-    setSyncing(true);
+  const syncAll = async () => {
+    if (!client || isSyncing) return;
+
     try {
-      console.log("Syncing all conversations...");
-      await client.conversations.sync();
-      await loadConversations();
-      console.log("All conversations synced successfully");
-    } catch (e) {
-      console.error("Failed to sync conversations:", e);
+      setIsSyncing(true);
+      console.log("Starting sync...");
+
+      // Sync all conversations and messages
+      await client.conversations.syncAll();
+
+      // Sync preferences
+      await client.preferences.sync();
+
+      // Update conversations list
+      const updatedConversations = await client.conversations.list();
+      setConversations(updatedConversations);
+
+      // If there's a selected conversation, sync its messages
+      if (selectedConversation) {
+        await selectedConversation.sync();
+        const updatedMessages = await selectedConversation.messages();
+        setMessages(updatedMessages);
+      }
+
+      setLastSyncTime(Date.now());
+      setIsInitialSyncDone(true);
+      console.log("Sync completed successfully");
+    } catch (error) {
+      console.error("Error during sync:", error);
     } finally {
-      setSyncing(false);
+      setIsSyncing(false);
     }
   };
 
-  const syncCurrentConversation = async () => {
-    if (!client || !selectedConversation) return;
-    setSyncing(true);
-    try {
-      console.log("Syncing current conversation:", selectedConversation.id);
-      await selectedConversation.sync();
-      await loadMessages(selectedConversation);
-      console.log("Current conversation synced successfully");
-    } catch (e) {
-      console.error("Failed to sync conversation:", e);
-    } finally {
-      setSyncing(false);
-    }
-  };
+  // Initial sync effect
+  useEffect(() => {
+    if (!client || isInitialSyncDone) return;
+
+    syncAll();
+  }, [client, isInitialSyncDone]);
+
+  // Periodic sync effect
+  useEffect(() => {
+    if (!client || !isInitialSyncDone) return;
+
+    const syncInterval = setInterval(() => {
+      const now = Date.now();
+      // Only sync if it's been more than 30 seconds since the last sync
+      if (now - lastSyncTime > 30000) {
+        syncAll();
+      }
+    }, 30000);
+
+    return () => clearInterval(syncInterval);
+  }, [client, lastSyncTime, isInitialSyncDone]);
+
+  // Reset initial sync when client changes
+  useEffect(() => {
+    setIsInitialSyncDone(false);
+  }, [client]);
+
+  // Update useEffect to handle conversation rendering
+  useEffect(() => {
+    const renderConversations = async () => {
+      if (!client || loading.conversations) return;
+
+      if (conversations.length === 0) {
+        setRenderedConversations([
+          <div key="empty" className="p-4 text-center">
+            <p className="text-gray-500 dark:text-gray-400">
+              No conversations yet
+            </p>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="mt-2 text-blue-500 hover:text-blue-600 font-medium"
+            >
+              Start a conversation
+            </button>
+          </div>,
+        ]);
+        return;
+      }
+
+      try {
+        const rendered = await Promise.all(
+          conversations
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt || 0).getTime() -
+                new Date(a.createdAt || 0).getTime()
+            )
+            .map(async (convo) => {
+              try {
+                const name = await formatConversationName(convo);
+                const type = await getConversationType(convo);
+
+                // Skip empty groups
+                if (type === "Empty Group") return null;
+
+                // For groups with 2 members, show it as a DM
+                if (
+                  type === "Direct Message" &&
+                  typeof (convo as any).members === "function"
+                ) {
+                  const members = await getGroupMembersWithAddresses(convo);
+                  if (members.length === 1) {
+                    return (
+                      <div
+                        key={convo.id}
+                        onClick={() => handleConversationSelect(convo)}
+                        className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 ${
+                          selectedConversation?.id === convo.id
+                            ? "bg-blue-50 dark:bg-blue-900/50"
+                            : ""
+                        }`}
+                      >
+                        <p className="font-semibold">{name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Direct Message
+                        </p>
+                      </div>
+                    );
+                  }
+                }
+
+                // For other conversations
+                return (
+                  <div
+                    key={convo.id}
+                    onClick={() => handleConversationSelect(convo)}
+                    className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 ${
+                      selectedConversation?.id === convo.id
+                        ? "bg-blue-50 dark:bg-blue-900/50"
+                        : ""
+                    }`}
+                  >
+                    <p className="font-semibold">{name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {type}
+                    </p>
+                  </div>
+                );
+              } catch (e) {
+                console.error("Error rendering conversation:", e);
+                return null;
+              }
+            })
+        );
+
+        setRenderedConversations(rendered.filter(Boolean) as JSX.Element[]);
+      } catch (e) {
+        console.error("Error rendering conversations:", e);
+        setRenderedConversations([
+          <div key="error" className="p-4 text-center text-red-500">
+            Error loading conversations
+          </div>,
+        ]);
+      }
+    };
+
+    renderConversations();
+  }, [client, conversations, loading.conversations, selectedConversation?.id]);
 
   return (
     <>
@@ -743,12 +1032,26 @@ export default function Home() {
               <h2 className="text-xl font-bold">Conversations</h2>
               <div className="flex gap-2">
                 <button
-                  onClick={syncAllConversations}
-                  disabled={!client || syncing}
-                  className="text-blue-500 hover:text-blue-600 font-semibold disabled:opacity-50"
-                  title="Sync all conversations"
+                  onClick={syncAll}
+                  disabled={isSyncing}
+                  className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                    isSyncing ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  title={isSyncing ? "Syncing..." : "Sync conversations"}
                 >
-                  {syncing ? "Syncing..." : "↻"}
+                  <svg
+                    className={`w-5 h-5 ${isSyncing ? "animate-spin" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
                 </button>
                 <button
                   onClick={() => setIsModalOpen(true)}
@@ -761,36 +1064,11 @@ export default function Home() {
             </div>
             <div className="flex-grow overflow-y-auto">
               {loading.conversations ? (
-                <p className="p-4">Loading...</p>
-              ) : conversations.length === 0 ? (
-                <p className="p-4 text-gray-500 dark:text-gray-400">
-                  No conversations yet
-                </p>
+                <div className="p-4 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                </div>
               ) : (
-                conversations
-                  .sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime()
-                  )
-                  .map((convo) => (
-                    <div
-                      key={convo.id}
-                      onClick={() => handleConversationSelect(convo)}
-                      className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                        selectedConversation?.id === convo.id
-                          ? "bg-blue-50 dark:bg-blue-900/50"
-                          : ""
-                      }`}
-                    >
-                      <p className="font-semibold">
-                        {conversationNames[convo.id] || "Loading..."}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {conversationTypes[convo.id] || "Loading..."}
-                      </p>
-                    </div>
-                  ))
+                renderedConversations
               )}
             </div>
             <div className="p-4 border-t dark:border-gray-700">
@@ -803,21 +1081,16 @@ export default function Home() {
                 <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-semibold">
-                      {conversationNames[selectedConversation.id] ||
-                        "Loading..."}
+                      Conversation with {selectedConversation.id}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {conversationTypes[selectedConversation.id] ||
-                        "Loading..."}
-                    </p>
                   </div>
                   <button
-                    onClick={syncCurrentConversation}
-                    disabled={!client || syncing}
+                    onClick={syncAll}
+                    disabled={!client || isSyncing}
                     className="text-blue-500 hover:text-blue-600 font-semibold disabled:opacity-50"
                     title="Sync conversation"
                   >
-                    {syncing ? "Syncing..." : "↻"}
+                    {isSyncing ? "Syncing..." : "↻"}
                   </button>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4 space-y-4">
@@ -834,7 +1107,10 @@ export default function Home() {
                   )}
                 </div>
                 <div className="p-4 border-t dark:border-gray-700">
-                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <form
+                    onSubmit={(e) => handleSendMessage(e)}
+                    className="flex gap-2"
+                  >
                     <input
                       type="text"
                       value={newMessage}
