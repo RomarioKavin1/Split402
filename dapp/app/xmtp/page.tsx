@@ -451,10 +451,9 @@ export default function Home() {
           }
 
           console.log("Creating new group conversation with:", recipients);
-          const newConvo = await (client as any).conversations.newGroup(
-            recipients,
-            { env: "dev" }
-          );
+          const newConvo = await (
+            client as any
+          ).conversations.newGroupWithIdentifiers(recipients, { env: "dev" });
           console.log("New group conversation created:", newConvo);
           await loadConversations();
           setSelectedConversation(newConvo);
@@ -492,23 +491,6 @@ export default function Home() {
         return;
       }
 
-      // Create a client for the target address to get their inbox ID
-      const targetIdentifier = {
-        identifier: address,
-        identifierKind: "Ethereum",
-      } as const;
-
-      console.log("Creating client for target address:", address);
-      const targetClient = await Client.build(targetIdentifier);
-
-      console.log("Target client created, getting inbox ID");
-      const targetInboxId = targetClient.inboxId;
-      const inboxState = await client.preferences.inboxStateFromInboxIds([
-        targetInboxId || "",
-      ]);
-      const addressFromInboxId = inboxState[0].accountIdentifiers[0].identifier;
-      console.log("Target inbox ID:", targetInboxId);
-
       // First, try to find an existing conversation with this address
       const existingConversations = await listConversations(client);
       console.log("Checking existing conversations:", existingConversations);
@@ -538,11 +520,12 @@ export default function Home() {
         return;
       }
 
-      // If no existing conversation, create a new one using the inbox ID
-      console.log("Creating new DM conversation with inbox ID:", targetInboxId);
-      const conversation = await client.conversations.newDm(
-        targetInboxId || ""
-      );
+      // If no existing conversation, create a new one directly with the address
+      console.log("Creating new DM conversation with address:", address);
+      const conversation = await client.conversations.newDmWithIdentifier({
+        identifier: address,
+        identifierKind: "Ethereum",
+      });
       console.log("Created new conversation:", {
         id: conversation.id,
         peerAddress:
@@ -564,7 +547,13 @@ export default function Home() {
       setIsModalOpen(false);
     } catch (e) {
       console.error("Failed to create conversation:", e);
-      setError("Failed to create conversation");
+      if ((e as Error).message.includes("NoModificationAllowedError")) {
+        setError(
+          "Please try again in a few seconds. The system is currently busy."
+        );
+      } else {
+        setError("Failed to create conversation: " + (e as Error).message);
+      }
     } finally {
       setLoading((prev) => ({ ...prev, newConversation: false }));
     }
