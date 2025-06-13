@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AgentRequest, AgentResponse } from "../types/api";
+import { AgentRequest, AgentResponse } from "../../lib/types/api";
 
 /**
  * Sends a user message to the AgentKit backend API and retrieves the agent's response.
@@ -48,7 +48,9 @@ async function messageAgent(userMessage: string): Promise<string | null> {
  * - `isThinking`: Boolean indicating if the agent is processing a response.
  */
 export function useAgent() {
-  const [messages, setMessages] = useState<{ text: string; sender: "user" | "agent" }[]>([]);
+  const [messages, setMessages] = useState<
+    { text: string; sender: "user" | "agent" }[]
+  >([]);
   const [isThinking, setIsThinking] = useState(false);
 
   /**
@@ -59,13 +61,16 @@ export function useAgent() {
   const sendMessage = async (input: string) => {
     if (!input.trim()) return;
 
-    setMessages(prev => [...prev, { text: input, sender: "user" }]);
+    setMessages((prev) => [...prev, { text: input, sender: "user" }]);
     setIsThinking(true);
 
     const responseMessage = await messageAgent(input);
 
     if (responseMessage) {
-      setMessages(prev => [...prev, { text: responseMessage, sender: "agent" }]);
+      setMessages((prev) => [
+        ...prev,
+        { text: responseMessage, sender: "agent" },
+      ]);
     }
 
     setIsThinking(false);
