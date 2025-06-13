@@ -13,6 +13,7 @@ import { ethers } from "ethers";
 import { initXMTP } from "../../lib/xmtpClient";
 import { listConversations, getMessages } from "../../lib/messaging";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import SplitModal from "../../components/SplitModal";
 import { Dialog, Transition } from "@headlessui/react";
 
 // We need to extend the DecodedMessage type to include senderAddress, which is present at runtime
@@ -31,7 +32,7 @@ type ConsentState = "allowed" | "denied" | "unknown";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
-
+  const [members, setMembers] = useState<any>([]);
   const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<AnyConversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
@@ -73,6 +74,26 @@ export default function Home() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
+
+  // SplitModal state
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [splitSigner, setSplitSigner] = useState<ethers.Signer | null>(null);
+
+  // Helper to open modal and get signer
+  const openSplitModal = async () => {
+    if ((window as any).ethereum) {
+      const members = await selectedConversation?.members();
+      setMembers(members);
+      console.log("members", members)
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      setSplitSigner(signer);
+      setIsSplitModalOpen(true);
+    } else {
+      alert("No Ethereum wallet found.");
+    }
+  };
+
 
   const formatAddress = (addr: string | undefined): string =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
@@ -475,6 +496,7 @@ export default function Home() {
       try {
         setLoading((prev) => ({ ...prev, sending: true }));
         await selectedConversation.send(newMessage);
+
         setNewMessage("");
 
         // Sync the conversation after sending
@@ -1077,8 +1099,25 @@ export default function Home() {
           </div>
           <div className="w-2/3 flex flex-col">
             {selectedConversation ? (
-              <>
-                <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+  <>
+    {/* Split Button */}
+    <div className="p-4 border-b dark:border-gray-700 flex justify-end">
+      <button
+        onClick={openSplitModal}
+        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+      >
+        Create Split
+      </button>
+    </div>
+    <SplitModal
+      isOpen={isSplitModalOpen}
+      onClose={() => setIsSplitModalOpen(false)}
+      signer={splitSigner}
+      initiatorAddress={address || ""}
+      conversationId={selectedConversation.id}
+      members={members}
+    />
+    <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-semibold">
                       Conversation with {selectedConversation.id}
