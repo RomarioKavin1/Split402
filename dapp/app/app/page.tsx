@@ -612,6 +612,62 @@ export default function Home() {
     [client, selectedConversation]
   );
 
+  const handleCreateGroupConversation = async (addresses: string) => {
+    if (!client || !addresses.trim()) return;
+
+    try {
+      // Split addresses and trim whitespace
+      const addressList = addresses.split(",").map((addr) => addr.trim());
+      console.log("Processing addresses:", addressList);
+
+      // Validate each address
+      const recipients = addressList.map((addr) => {
+        try {
+          return ethers.getAddress(addr);
+        } catch (e) {
+          throw new Error(`Invalid address: ${addr}`);
+        }
+      });
+
+      console.log("Validated addresses:", recipients);
+
+      // Check if all addresses are on XMTP network
+      const canMessageMap = await Client.canMessage(
+        recipients.map((recipient) => ({
+          identifier: recipient,
+          identifierKind: "Ethereum",
+        })),
+        "dev"
+      );
+
+      const allCanMessage = recipients.every((recipient) =>
+        canMessageMap.get(recipient.toLowerCase())
+      );
+
+      if (!allCanMessage) {
+        throw new Error(
+          "One or more addresses are not on the XMTP network. Make sure all addresses have registered with XMTP."
+        );
+      }
+
+      console.log("Creating new group conversation with:", recipients);
+      const newConvo = await client.conversations.newGroupWithIdentifiers(
+        recipients.map((recipient) => ({
+          identifier: recipient,
+          identifierKind: "Ethereum",
+        }))
+      );
+      console.log("New group conversation created:", newConvo);
+
+      // Reload conversations and select the new one
+      await loadConversations();
+      setSelectedConversation(newConvo);
+    } catch (error) {
+      console.error("Error creating group conversation:", error);
+      throw error;
+    }
+  };
+
   const handleCreateConversation = async () => {
     if (!client || !newRecipient.trim()) return;
     try {
@@ -1140,9 +1196,8 @@ export default function Home() {
           await handleNewConversation(address);
         } else {
           console.log("Creating group chat with addresses:", address);
-          setNewConversationType(NewConversationType.Group);
-          setNewRecipient(address);
-          await handleCreateConversation();
+          // Create group directly here instead of using state
+          await handleCreateGroupConversation(address);
         }
         setAddress("");
         onClose();
@@ -1209,16 +1264,21 @@ export default function Home() {
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder={
                   conversationType === NewConversationType.Direct
-                    ? "0x..."
-                    : "0x..., 0x..., 0x..."
+                    ? "0x1234...abcd"
+                    : "0x1234...abcd, 0x5678...efgh, 0x9abc...ijkl"
                 }
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-500"
                 required
               />
               {conversationType === NewConversationType.Group && (
-                <p className="mt-2 text-xs text-gray-500">
-                  Enter multiple addresses separated by commas
-                </p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-gray-500">
+                    Enter multiple Ethereum addresses separated by commas
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    All addresses must be registered on the XMTP network
+                  </p>
+                </div>
               )}
             </div>
             {error && (
@@ -1244,8 +1304,10 @@ export default function Home() {
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                     Creating...
                   </div>
+                ) : conversationType === NewConversationType.Direct ? (
+                  "Create DM"
                 ) : (
-                  "Create"
+                  "Create Group"
                 )}
               </button>
             </div>
