@@ -797,6 +797,7 @@ export default function Home() {
     const [splitDetail, setSplitDetail] = useState<any>(null);
     const [isJSONParsable, setIsJSONParsable] = useState(false);
     const [parsedJSON, setParsedJSON] = useState<any>(null);
+    const [showExecuteButton, setShowExecuteButton] = useState(false);
 
     useEffect(() => {
       const fetchSplitDetails = async () => {
@@ -836,15 +837,46 @@ export default function Home() {
         }
       };
 
+      const checkIfUserInSplit = (jsonData: any) => {
+        // Check if this is a split message format
+        if (
+          jsonData.totalAmount &&
+          jsonData.ethereumAddresses &&
+          jsonData.parsedMemberAmts
+        ) {
+          // Check if current user's address is in the ethereumAddresses array
+          const userAddress = address?.toLowerCase();
+          const isUserInSplit = jsonData.ethereumAddresses.some(
+            (addr: string) => addr.toLowerCase() === userAddress
+          );
+
+          console.log("Checking split message:", {
+            userAddress,
+            ethereumAddresses: jsonData.ethereumAddresses,
+            isUserInSplit,
+          });
+
+          setShowExecuteButton(isUserInSplit);
+          return isUserInSplit;
+        }
+        return false;
+      };
+
       // Only if content is string and maybe JSON
       if (typeof message.content === "string") {
         try {
           const parsed = JSON.parse(message.content);
           setParsedJSON(parsed);
           setIsJSONParsable(true);
-          fetchSplitDetails();
+
+          // Check if user should see the execute button
+          const isUserInSplit = checkIfUserInSplit(parsed);
+          if (isUserInSplit) {
+            fetchSplitDetails();
+          }
         } catch {
           setIsJSONParsable(false);
+          setShowExecuteButton(false);
         }
       } else if (
         typeof message.content === "object" &&
@@ -852,9 +884,127 @@ export default function Home() {
       ) {
         setParsedJSON(message.content);
         setIsJSONParsable(true);
-        fetchSplitDetails();
+
+        // Check if user should see the execute button
+        const isUserInSplit = checkIfUserInSplit(message.content);
+        if (isUserInSplit) {
+          fetchSplitDetails();
+        }
       }
-    }, [message]);
+    }, [message, address]);
+
+    const formatEthAmount = (weiAmount: string) => {
+      try {
+        const ethAmount = ethers.formatEther(weiAmount);
+        return parseFloat(ethAmount).toFixed(4);
+      } catch {
+        return "0.0000";
+      }
+    };
+
+    const renderSplitMessage = () => {
+      if (!parsedJSON || !isJSONParsable) return null;
+
+      // Check if this is a split message
+      if (
+        parsedJSON.totalAmount &&
+        parsedJSON.ethereumAddresses &&
+        parsedJSON.parsedMemberAmts
+      ) {
+        const totalEth = formatEthAmount(parsedJSON.totalAmount);
+        const initiatorEth = formatEthAmount(parsedJSON.initiatorAmt);
+        const userAddress = address?.toLowerCase();
+        const userIndex = parsedJSON.ethereumAddresses.findIndex(
+          (addr: string) => addr.toLowerCase() === userAddress
+        );
+        const userAmount =
+          userIndex !== -1
+            ? formatEthAmount(parsedJSON.parsedMemberAmts[userIndex])
+            : null;
+
+        return (
+          <div className="bg-gradient-to-br from-green-900/20 to-blue-900/20 border border-green-500/30 rounded-2xl p-4 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <svg
+                className="w-5 h-5 text-green-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                />
+              </svg>
+              <span className="text-green-400 font-semibold text-sm">
+                Split Payment
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300 text-sm mr-2">Total Amount</span>
+                <span className="text-white font-bold">{totalEth} ETH</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300 text-sm">Initiator Paid</span>
+                <span className="text-blue-400 font-medium">
+                  {initiatorEth} ETH
+                </span>
+              </div>
+
+              {userAmount && (
+                <div className="flex justify-between items-center bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-2">
+                  <span className="text-yellow-400 text-sm font-medium">
+                    Your Share
+                  </span>
+                  <span className="text-yellow-300 font-bold">
+                    {userAmount} ETH
+                  </span>
+                </div>
+              )}
+
+              <div className="border-t border-gray-600 pt-3">
+                <span className="text-gray-300 text-xs">
+                  Participants ({parsedJSON.ethereumAddresses.length + 1})
+                </span>
+                <div className="mt-2 space-y-1">
+                  {parsedJSON.ethereumAddresses.map(
+                    (addr: string, index: number) => (
+                      <div
+                        key={addr}
+                        className="flex justify-between items-center text-xs"
+                      >
+                        <span
+                          className={`font-mono ${
+                            addr.toLowerCase() === userAddress
+                              ? "text-yellow-400"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {addr.toLowerCase() === userAddress
+                            ? "You"
+                            : `${addr.slice(0, 6)}...${addr.slice(-4)}`}
+                        </span>
+                        <span className="text-gray-300">
+                          {formatEthAmount(parsedJSON.parsedMemberAmts[index])}{" "}
+                          ETH
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    };
 
     const messageContent =
       typeof message.content === "string"
@@ -895,40 +1045,62 @@ export default function Home() {
           } backdrop-blur-sm`}
         >
           <div className="space-y-1">
-            {wrappedContent.map(
-              (
-                line:
-                  | string
-                  | number
-                  | bigint
-                  | boolean
-                  | ReactElement<any, string | JSXElementConstructor<any>>
-                  | Iterable<ReactNode>
-                  | ReactPortal
-                  | Promise<AwaitedReactNode>
-                  | null
-                  | undefined,
-                i: Key | null | undefined
-              ) => (
-                <p
-                  key={i}
-                  className="text-sm leading-relaxed break-words whitespace-pre-wrap"
-                >
-                  {line}
-                </p>
-              )
-            )}
-            {isJSONParsable && (
-              <button
-                onClick={handleExecute}
-                className={`mt-3 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
-                  isSent
-                    ? "bg-blue-500 text-white hover:bg-blue-400"
-                    : "bg-gray-700 text-gray-200 hover:bg-gray-600 border border-gray-600"
-                } shadow-sm`}
-              >
-                Execute Payment
-              </button>
+            {isJSONParsable && parsedJSON?.totalAmount ? (
+              // Render split payment UI
+              <>
+                {renderSplitMessage()}
+                {showExecuteButton && (
+                  <button
+                    onClick={handleExecute}
+                    className={`mt-3 w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      isSent
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg"
+                        : "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg"
+                    }`}
+                  >
+                    💳 Pay Your Share
+                  </button>
+                )}
+              </>
+            ) : (
+              // Render regular message
+              <>
+                {wrappedContent.map(
+                  (
+                    line:
+                      | string
+                      | number
+                      | bigint
+                      | boolean
+                      | ReactElement<any, string | JSXElementConstructor<any>>
+                      | Iterable<ReactNode>
+                      | ReactPortal
+                      | Promise<AwaitedReactNode>
+                      | null
+                      | undefined,
+                    i: Key | null | undefined
+                  ) => (
+                    <p
+                      key={i}
+                      className="text-sm leading-relaxed break-words whitespace-pre-wrap"
+                    >
+                      {line}
+                    </p>
+                  )
+                )}
+                {isJSONParsable && showExecuteButton && (
+                  <button
+                    onClick={handleExecute}
+                    className={`mt-3 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
+                      isSent
+                        ? "bg-blue-500 text-white hover:bg-blue-400"
+                        : "bg-gray-700 text-gray-200 hover:bg-gray-600 border border-gray-600"
+                    } shadow-sm`}
+                  >
+                    Execute Payment
+                  </button>
+                )}
+              </>
             )}
           </div>
           <p
