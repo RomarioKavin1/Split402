@@ -5,7 +5,7 @@ const PaymentSplitterRegistryAbi = JSON.parse(
   readFileSync(new URL('../data/paymentSpiltterRegistryAbi.json', import.meta.url))
 );
 
-const CONTRACT_ADDRESS = "0xEFa13721638c6d7A04aE12Ed0DBa560Eb7a29Dc2";
+const CONTRACT_ADDRESS = "0x4772dd21E368038682327fCa01E75f71666689cD";
 
 function getContract(signerOrProvider) {
   return new ethers.Contract(

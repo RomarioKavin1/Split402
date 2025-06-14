@@ -4,14 +4,12 @@ import {
   Client,
   Conversation,
   DecodedMessage,
-  Identifier,
 } from "@xmtp/browser-sdk";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
-  Fragment,
   AwaitedReactNode,
   JSXElementConstructor,
   Key,
@@ -20,13 +18,12 @@ import {
   ReactPortal,
 } from "react";
 import { useAccount, useConnectorClient, useWalletClient } from "wagmi";
-import { ethers, Wallet } from "ethers";
+import { ethers } from "ethers";
 
 import { initXMTP } from "../../lib/xmtpClient";
-import { listConversations, getMessages } from "../../lib/messaging";
+import { listConversations } from "../../lib/messaging";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import SplitModal from "../../components/SplitModal";
-import { Dialog, Transition } from "@headlessui/react";
 import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
 import axios from "axios";
 import { getSplitDetails } from "@/lib/splitManagement/contractInteraction";
@@ -43,11 +40,12 @@ enum NewConversationType {
 // Define types
 type AnyConversation = Conversation<any>;
 type ConsentState = "allowed" | "denied" | "unknown";
-export function useWagmiAccount() {
-  const { data: walletClient } = useWalletClient();
-  return walletClient; // Pass the entire walletClient, not just the account
-}
+
 export default function Home() {
+  function useWagmiAccount() {
+    const { data: walletClient } = useWalletClient();
+    return walletClient; // Pass the entire walletClient, not just the account
+  }
   // const { address, isConnected } = useAccount();
   const { address, isConnected } = useAccount();
   const { data: connectorClient } = useConnectorClient();
