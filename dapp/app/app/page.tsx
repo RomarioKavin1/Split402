@@ -1036,13 +1036,13 @@ export default function Home() {
     };
 
     return (
-      <div className={`flex ${isSent ? "justify-end" : "justify-start"} mb-3`}>
+      <div className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}>
         <div
-          className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+          className={`max-w-[85%] rounded-2xl px-4 py-3.5 ${
             isSent
-              ? "bg-blue-600 text-white rounded-br-md shadow-lg"
-              : "bg-gray-800 text-gray-100 rounded-bl-md shadow-lg border border-gray-700"
-          } backdrop-blur-sm`}
+              ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-md shadow-xl shadow-blue-500/25 border border-blue-500/30"
+              : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-gray-100 rounded-bl-md shadow-xl border border-gray-700/50 backdrop-blur-xl"
+          }`}
         >
           <div className="space-y-1">
             {isJSONParsable && parsedJSON?.totalAmount ? (
@@ -1428,23 +1428,41 @@ export default function Home() {
                       <div
                         key={convo.id}
                         onClick={() => handleConversationSelect(convo)}
-                        className={`p-4 cursor-pointer hover:bg-gray-800 transition-all duration-200 border-b border-gray-800 ${
+                        className={`mx-2 my-1 p-4 cursor-pointer rounded-2xl border transition-all duration-300 hover:scale-[1.02] ${
                           selectedConversation?.id === convo.id
-                            ? "bg-gray-800 border-l-4 border-l-blue-500"
-                            : ""
+                            ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20"
+                            : "bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/30 hover:border-gray-600/50 hover:bg-gray-700/50 backdrop-blur-sm"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <span className="text-sm font-bold text-white">
+                              {name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-white truncate">
+                            <p className="font-semibold text-white truncate text-lg">
                               {name}
                             </p>
-                            <p className="text-sm text-gray-400 truncate">
+                            <p className="text-sm text-gray-400 truncate flex items-center gap-2">
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                />
+                              </svg>
                               Direct Message
                             </p>
                           </div>
-                          <div className="ml-3 flex-shrink-0">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <div className="flex-shrink-0">
+                            <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
                           </div>
                         </div>
                       </div>
@@ -1457,21 +1475,41 @@ export default function Home() {
                   <div
                     key={convo.id}
                     onClick={() => handleConversationSelect(convo)}
-                    className={`p-4 cursor-pointer hover:bg-gray-800 transition-all duration-200 border-b border-gray-800 ${
+                    className={`mx-2 my-1 p-4 cursor-pointer rounded-2xl border transition-all duration-300 hover:scale-[1.02] ${
                       selectedConversation?.id === convo.id
-                        ? "bg-gray-800 border-l-4 border-l-blue-500"
-                        : ""
+                        ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20"
+                        : "bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700/30 hover:border-gray-600/50 hover:bg-gray-700/50 backdrop-blur-sm"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <span className="text-sm font-bold text-white">
+                          {name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white truncate">
+                        <p className="font-semibold text-white truncate text-lg">
                           {name}
                         </p>
-                        <p className="text-sm text-gray-400 truncate">{type}</p>
+                        <p className="text-sm text-gray-400 truncate flex items-center gap-2">
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                          </svg>
+                          {type}
+                        </p>
                       </div>
-                      <div className="ml-3 flex-shrink-0">
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <div className="flex-shrink-0">
+                        <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
                       </div>
                     </div>
                   </div>
@@ -1505,171 +1543,213 @@ export default function Home() {
 
   return (
     <>
-      <div className="h-screen bg-black text-white flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between flex-shrink-0">
-          <h1 className="text-xl font-bold text-white">split402</h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={syncAll}
-              disabled={isSyncing}
-              className={`p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-all duration-200 ${
-                isSyncing ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              title={isSyncing ? "Syncing..." : "Sync conversations"}
-            >
-              <svg
-                className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              disabled={!client}
-              className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 transition-all duration-200 disabled:opacity-50"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Main Content */}
+      <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-white flex flex-col overflow-hidden">
+        {/* Main Content Area */}
         <div className="flex flex-col flex-1 min-h-0">
           {!selectedConversation ? (
             /* Conversations List View */
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="px-4 py-3 border-b border-gray-800 flex-shrink-0">
-                <h2 className="text-lg font-semibold text-gray-100">
-                  {activeTab === "dms" ? "Direct Messages" : "Groups"}
-                </h2>
-              </div>
-
-              {/* Bottom Navigation */}
-              <div className="flex bg-gray-900 border-b border-gray-800 flex-shrink-0">
-                <button
-                  onClick={() => setActiveTab("dms")}
-                  className={`flex-1 py-3 px-4 text-sm font-medium transition-all duration-200 ${
-                    activeTab === "dms"
-                      ? "text-blue-400 border-b-2 border-blue-400 bg-gray-800"
-                      : "text-gray-400 hover:text-gray-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                    DMs
+              {/* Top Header */}
+              <div className="bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-xl border-b border-gray-700/50 px-6 py-4 flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <span className="text-xs font-bold">S402</span>
+                    </div>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <ConnectButton showBalance={false} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end items-center gap-2  p-4">
+                <button
+                  onClick={syncAll}
+                  disabled={isSyncing}
+                  className={`p-2.5 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 transition-all duration-200 ${
+                    isSyncing ? "opacity-50 cursor-not-allowed" : ""
+                  } backdrop-blur-sm border border-gray-600/30`}
+                  title={isSyncing ? "Syncing..." : "Sync conversations"}
+                >
+                  <svg
+                    className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
                 </button>
                 <button
-                  onClick={() => setActiveTab("groups")}
-                  className={`flex-1 py-3 px-4 text-sm font-medium transition-all duration-200 ${
-                    activeTab === "groups"
-                      ? "text-blue-400 border-b-2 border-blue-400 bg-gray-800"
-                      : "text-gray-400 hover:text-gray-200"
-                  }`}
+                  onClick={() => setIsModalOpen(true)}
+                  disabled={!client}
+                  className="p-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transition-all duration-200 disabled:opacity-50 shadow-lg border border-blue-500/30"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                    Groups
-                  </div>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
                 </button>
               </div>
-
+              {/* Conversations List */}
               <div className="flex-1 min-h-0 overflow-hidden">
-                <div className="h-full overflow-y-auto">
+                <div className="h-full overflow-y-auto px-2 py-4 space-y-2">
                   {loading.conversations ? (
-                    <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                    <div className="flex items-center justify-center p-12">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-500 border-t-transparent"></div>
+                        <p className="text-gray-400 text-sm">
+                          Loading conversations...
+                        </p>
+                      </div>
                     </div>
                   ) : renderedConversations.length > 0 ? (
                     renderedConversations
                   ) : (
-                    <div className="p-8 text-center">
-                      <div className="mb-4">
-                        <svg
-                          className="w-16 h-16 mx-auto text-gray-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center p-8 max-w-sm">
+                        <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl flex items-center justify-center border border-gray-700/50">
+                          <svg
+                            className="w-12 h-12 text-gray-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-200 mb-2">
+                          {activeTab === "dms"
+                            ? "No direct messages"
+                            : "No groups yet"}
+                        </h3>
+                        <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+                          {activeTab === "dms"
+                            ? "Start a conversation with friends and family"
+                            : "Create a group to split expenses with multiple people"}
+                        </p>
+                        <button
+                          onClick={() => setIsModalOpen(true)}
+                          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-500 hover:to-purple-500 transition-all duration-200 shadow-lg border border-blue-500/30"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1}
-                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                          />
-                        </svg>
+                          {activeTab === "dms"
+                            ? "Start messaging"
+                            : "Create group"}
+                        </button>
                       </div>
-                      <p className="text-gray-400 mb-4">No conversations yet</p>
-                      <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-500 transition-all duration-200"
-                      >
-                        Start messaging
-                      </button>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Wallet Connection at bottom */}
-              <div className="p-4 border-t border-gray-800 bg-gray-900 flex-shrink-0">
-                <ConnectButton showBalance={false} />
+              {/* Bottom Navigation */}
+              <div className="bg-gradient-to-r from-gray-900/90 to-gray-800/90 backdrop-blur-xl border-t border-gray-700/50 flex-shrink-0">
+                <div className="flex">
+                  <button
+                    onClick={() => setActiveTab("dms")}
+                    className={`flex-1 py-4 px-6 transition-all duration-300 ${
+                      activeTab === "dms"
+                        ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-t-2 border-blue-400"
+                        : "hover:bg-gray-800/50"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <svg
+                        className={`w-5 h-5 ${
+                          activeTab === "dms"
+                            ? "text-blue-400"
+                            : "text-gray-400"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                      <span
+                        className={`text-xs font-medium ${
+                          activeTab === "dms"
+                            ? "text-blue-400"
+                            : "text-gray-400"
+                        }`}
+                      >
+                        Messages
+                      </span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("groups")}
+                    className={`flex-1 py-4 px-6 transition-all duration-300 ${
+                      activeTab === "groups"
+                        ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-t-2 border-blue-400"
+                        : "hover:bg-gray-800/50"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <svg
+                        className={`w-5 h-5 ${
+                          activeTab === "groups"
+                            ? "text-blue-400"
+                            : "text-gray-400"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                      <span
+                        className={`text-xs font-medium ${
+                          activeTab === "groups"
+                            ? "text-blue-400"
+                            : "text-gray-400"
+                        }`}
+                      >
+                        Groups
+                      </span>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
             /* Chat View */
             <div className="flex-1 flex flex-col min-h-0">
               {/* Chat Header */}
-              <div className="px-4 py-3 border-b border-gray-800 bg-gray-900 flex items-center justify-between flex-shrink-0">
+              <div className="bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-xl border-b border-gray-700/50 px-4 py-3 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setSelectedConversation(null)}
-                    className="p-1 rounded-full hover:bg-gray-800 transition-colors"
+                    className="p-2 rounded-xl hover:bg-gray-800/50 transition-all duration-200 border border-gray-700/30"
                   >
                     <svg
                       className="w-5 h-5"
@@ -1685,36 +1765,70 @@ export default function Home() {
                       />
                     </svg>
                   </button>
-                  <div>
-                    <h3 className="font-semibold text-white truncate max-w-[200px]">
-                      {conversationNames[selectedConversation.id] || "Unknown"}
-                    </h3>
-                    <p className="text-xs text-gray-400">
-                      {conversationTypes[selectedConversation.id] || "Chat"}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold">
+                        {conversationNames[selectedConversation.id]?.charAt(
+                          0
+                        ) || "?"}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white truncate max-w-[200px]">
+                        {conversationNames[selectedConversation.id] ||
+                          "Unknown"}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        {conversationTypes[selectedConversation.id] || "Chat"}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <button
                   onClick={openSplitModal}
-                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-full font-medium hover:bg-green-500 transition-all duration-200"
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm rounded-xl font-medium hover:from-green-500 hover:to-emerald-500 transition-all duration-200 shadow-lg border border-green-500/30"
                 >
-                  Split
+                  💰 Split
                 </button>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 min-h-0 overflow-hidden bg-black">
+              <div className="flex-1 min-h-0 overflow-hidden bg-gradient-to-b from-black/20 to-gray-950/20">
                 <div className="h-full overflow-y-auto p-4 space-y-3">
                   {loading.messages ? (
                     <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                        <p className="text-gray-400 text-sm">
+                          Loading messages...
+                        </p>
+                      </div>
                     </div>
                   ) : messages.length === 0 ? (
-                    <div className="text-center p-8">
-                      <p className="text-gray-500 mb-4">No messages yet</p>
-                      <p className="text-gray-600 text-sm">
-                        Start the conversation!
-                      </p>
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center p-8">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl flex items-center justify-center border border-gray-700/50">
+                          <svg
+                            className="w-8 h-8 text-gray-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-200 mb-2">
+                          Start the conversation
+                        </h3>
+                        <p className="text-gray-400 text-sm">
+                          Send the first message to get things started!
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     messages.map((message, index) => {
@@ -1725,15 +1839,6 @@ export default function Home() {
                       const currentInboxId = client?.inboxId;
                       const currentAddress =
                         (client as any)?.address || address;
-
-                      // Debug logging to understand the message structure
-                      console.log("Message debug:", {
-                        senderInboxId: runtimeMessage.senderInboxId,
-                        currentInboxId,
-                        senderAddress: runtimeMessage.senderAddress,
-                        currentAddress,
-                        messageId: runtimeMessage.id,
-                      });
 
                       // Try multiple ways to determine if message is sent by current user
                       const isSent =
@@ -1768,28 +1873,28 @@ export default function Home() {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-gray-800 bg-gray-900 flex-shrink-0">
+              <div className="bg-gradient-to-r from-gray-900/90 to-gray-800/90 backdrop-blur-xl border-t border-gray-700/50 p-4 flex-shrink-0">
                 <form
                   onSubmit={(e) => handleSendMessage(e)}
-                  className="flex gap-2"
+                  className="flex gap-3"
                 >
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 px-4 py-3 rounded-full bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+                    className="flex-1 px-4 py-3 rounded-2xl bg-gray-800/80 border border-gray-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-200"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim() || loading.send}
-                    className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg border border-blue-500/30"
                   >
                     {loading.send ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                     ) : (
                       <svg
-                        className="w-4 h-4"
+                        className="w-5 h-5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1819,7 +1924,7 @@ export default function Home() {
           onBeforeCreate={async (input) => {
             console.log("onBeforeCreate", input);
             const id = await sendMessage(JSON.stringify(input));
-            return id; // ensure lastMessageId is set after send
+            return id;
           }}
         />
       </div>
