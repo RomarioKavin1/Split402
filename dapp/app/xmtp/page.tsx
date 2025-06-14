@@ -108,6 +108,9 @@ export default function Home() {
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [splitSigner, setSplitSigner] = useState<ethers.Signer | null>(null);
 
+  // Bottom nav state
+  const [activeTab, setActiveTab] = useState<"dms" | "groups">("dms");
+
   // Helper to open modal and get signer
   const openSplitModal = async () => {
     if ((window as any).ethereum) {
@@ -320,6 +323,37 @@ export default function Home() {
       return "Group Chat";
     }
     return "Unknown";
+  };
+
+  const isGroupConversation = async (
+    convo: AnyConversation
+  ): Promise<boolean> => {
+    if (!convo) return false;
+
+    // Get the peer address from various possible locations
+    const peerAddress =
+      (convo as any).peerAddress ||
+      (convo as any).peer?.address ||
+      (convo as any).peerAddresses?.[0];
+
+    // If it has a peer address, it's a direct message
+    if (peerAddress) {
+      return false;
+    }
+
+    // Check if it has members function and count them
+    if (typeof (convo as any).members === "function") {
+      try {
+        const members = await (convo as any).members();
+        if (members && members.length > 2) {
+          return true;
+        }
+      } catch (e) {
+        console.error("Error getting members for group check:", e);
+      }
+    }
+
+    return false;
   };
 
   const loadConversations = useCallback(async () => {
@@ -1117,15 +1151,30 @@ export default function Home() {
 
       if (conversations.length === 0) {
         setRenderedConversations([
-          <div key="empty" className="p-4 text-center">
-            <p className="text-gray-500 dark:text-gray-400">
-              No conversations yet
+          <div key="empty" className="p-8 text-center">
+            <div className="mb-4">
+              <svg
+                className="w-16 h-16 mx-auto text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </div>
+            <p className="text-gray-400 mb-4">
+              {activeTab === "dms" ? "No direct messages yet" : "No groups yet"}
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="mt-2 text-blue-500 hover:text-blue-600 font-medium"
+              className="px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-500 transition-all duration-200"
             >
-              Start a conversation
+              {activeTab === "dms" ? "Start messaging" : "Create group"}
             </button>
           </div>,
         ]);
@@ -1133,8 +1182,56 @@ export default function Home() {
       }
 
       try {
+        // Filter conversations based on active tab
+        const filteredConversations = await Promise.all(
+          conversations.map(async (convo) => {
+            const isGroup = await isGroupConversation(convo);
+            return { convo, isGroup };
+          })
+        );
+
+        const tabFilteredConversations = filteredConversations
+          .filter(({ isGroup }) => {
+            return activeTab === "groups" ? isGroup : !isGroup;
+          })
+          .map(({ convo }) => convo);
+
+        if (tabFilteredConversations.length === 0) {
+          setRenderedConversations([
+            <div key="empty" className="p-8 text-center">
+              <div className="mb-4">
+                <svg
+                  className="w-16 h-16 mx-auto text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+              <p className="text-gray-400 mb-4">
+                {activeTab === "dms"
+                  ? "No direct messages yet"
+                  : "No groups yet"}
+              </p>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-500 transition-all duration-200"
+              >
+                {activeTab === "dms" ? "Start messaging" : "Create group"}
+              </button>
+            </div>,
+          ]);
+          return;
+        }
+
         const rendered = await Promise.all(
-          conversations
+          tabFilteredConversations
             .sort(
               (a, b) =>
                 new Date(b.createdAt || 0).getTime() -
@@ -1226,7 +1323,13 @@ export default function Home() {
     };
 
     renderConversations();
-  }, [client, conversations, loading.conversations, selectedConversation?.id]);
+  }, [
+    client,
+    conversations,
+    loading.conversations,
+    selectedConversation?.id,
+    activeTab,
+  ]);
 
   return (
     <>
@@ -1286,8 +1389,62 @@ export default function Home() {
             <div className="flex-1 flex flex-col min-h-0">
               <div className="px-4 py-3 border-b border-gray-800 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-100">
-                  Messages
+                  {activeTab === "dms" ? "Direct Messages" : "Groups"}
                 </h2>
+              </div>
+
+              {/* Bottom Navigation */}
+              <div className="flex bg-gray-900 border-b border-gray-800 flex-shrink-0">
+                <button
+                  onClick={() => setActiveTab("dms")}
+                  className={`flex-1 py-3 px-4 text-sm font-medium transition-all duration-200 ${
+                    activeTab === "dms"
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-gray-800"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                    DMs
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab("groups")}
+                  className={`flex-1 py-3 px-4 text-sm font-medium transition-all duration-200 ${
+                    activeTab === "groups"
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-gray-800"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                    Groups
+                  </div>
+                </button>
               </div>
 
               <div className="flex-1 min-h-0 overflow-hidden">
