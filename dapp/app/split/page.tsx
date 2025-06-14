@@ -1,7 +1,6 @@
 "use client";
 import {
   Client,
-  Identifier,
 } from "@xmtp/browser-sdk";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -11,14 +10,15 @@ import { toast } from "sonner";
 import { initXMTP } from "@/lib/xmtpClient";
 import { Conversation, DecodedMessage } from "@xmtp/browser-sdk";
 import axios from "axios";
-import { useAccount, useConnectorClient } from "wagmi";
+import { useAccount, useConnectorClient, useWalletClient } from "wagmi";
 import { withPaymentInterceptor } from "x402-axios";
-import { useWagmiAccount } from "../app/page";
-import { ethers, Wallet } from "ethers";
+import { ethers } from "ethers";
 import { listConversations } from "@/lib/messaging";
 import { createSplit, getSplitDetails } from "@/lib/splitManagement/contractInteraction";
-import { Provider } from "@radix-ui/react-toast";
-
+function useWagmiAccount() {
+  const { data: walletClient } = useWalletClient();
+  return walletClient; // Pass the entire walletClient, not just the account
+}
 interface BillItem {  
   name: string;
   quantity: number;
