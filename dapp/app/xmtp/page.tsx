@@ -6,8 +6,20 @@ import {
   DecodedMessage,
   Identifier,
 } from "@xmtp/browser-sdk";
-import { useCallback, useEffect, useRef, useState, Fragment, AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react";
-import { useAccount, useConnectorClient, useWalletClient } from 'wagmi';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  Fragment,
+  AwaitedReactNode,
+  JSXElementConstructor,
+  Key,
+  ReactElement,
+  ReactNode,
+  ReactPortal,
+} from "react";
+import { useAccount, useConnectorClient, useWalletClient } from "wagmi";
 import { ethers, Wallet } from "ethers";
 
 import { initXMTP } from "../../lib/xmtpClient";
@@ -32,21 +44,21 @@ enum NewConversationType {
 type AnyConversation = Conversation<any>;
 type ConsentState = "allowed" | "denied" | "unknown";
 export function useWagmiAccount() {
-  const { data: walletClient } = useWalletClient()
-  return walletClient // Pass the entire walletClient, not just the account
+  const { data: walletClient } = useWalletClient();
+  return walletClient; // Pass the entire walletClient, not just the account
 }
 export default function Home() {
   // const { address, isConnected } = useAccount();
-    const { address,isConnected } = useAccount()
-  const { data: connectorClient } = useConnectorClient()
-  
+  const { address, isConnected } = useAccount();
+  const { data: connectorClient } = useConnectorClient();
+
   // For more advanced usage, you can get the full account from the connector
-  const account = useWagmiAccount()
+  const account = useWagmiAccount();
   const api = withPaymentInterceptor(
     axios.create({
-      baseURL:process.env.NEXT_PUBLIC_BASE_URL,
+      baseURL: process.env.NEXT_PUBLIC_BASE_URL,
     }),
-    account as any,
+    account as any
   );
   const [members, setMembers] = useState<any>([]);
   const [client, setClient] = useState<Client | null>(null);
@@ -101,7 +113,7 @@ export default function Home() {
     if ((window as any).ethereum) {
       const members = await selectedConversation?.members();
       setMembers(members);
-      console.log("members", members)
+      console.log("members", members);
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       setSplitSigner(signer);
@@ -110,7 +122,6 @@ export default function Home() {
       alert("No Ethereum wallet found.");
     }
   };
-
 
   const formatAddress = (addr: string | undefined): string =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
@@ -531,10 +542,10 @@ export default function Home() {
     },
     [client, selectedConversation, newMessage]
   );
-  
+
   const sendMessage = useCallback(
     async (message: string) => {
-      if (!client ) {
+      if (!client) {
         console.error("Client is not initialized");
         return null;
       }
@@ -546,7 +557,7 @@ export default function Home() {
         console.error("Message is empty");
         return null;
       }
-  
+
       try {
         setLoading((prev) => ({ ...prev, sending: true }));
         const messageId = await selectedConversation.send(message);
@@ -555,7 +566,7 @@ export default function Home() {
         await selectedConversation.sync();
         const updatedMessages = await selectedConversation.messages();
         setMessages(updatedMessages);
-  
+
         return messageId.toString();
       } catch (error) {
         console.error("Error sending message:", error);
@@ -566,7 +577,7 @@ export default function Home() {
     },
     [client, selectedConversation]
   );
-  
+
   const handleCreateConversation = async () => {
     if (!client || !newRecipient.trim()) return;
     try {
@@ -749,112 +760,156 @@ export default function Home() {
   }, [client, messages, messageAddresses]);
 
   const MessageItem = ({ message, isSent, senderAddress }: any) => {
-  const [splitDetail, setSplitDetail] = useState<any>(null);
-  const [isJSONParsable, setIsJSONParsable] = useState(false);
-  const [parsedJSON, setParsedJSON] = useState<any>(null);
+    const [splitDetail, setSplitDetail] = useState<any>(null);
+    const [isJSONParsable, setIsJSONParsable] = useState(false);
+    const [parsedJSON, setParsedJSON] = useState<any>(null);
 
-  useEffect(() => {
-    const fetchSplitDetails = async () => {
-      try {
-        const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-        const result = await getSplitDetails(provider, message.conversationId, message.id);
-        console.log(address,result.memberAddresses.findIndex((address1: string) => address1.toLowerCase() == address?.toLowerCase()));//amount
-        if (!result.memberPaids[result.memberAddresses.findIndex((address1: string) => address1.toLowerCase() == address?.toLowerCase())]) {
-          console.log("Not Paid");
-          
-        } else {
-          console.log("Paid");
-          setIsJSONParsable(false);
-          message.content = "Already paid your split amount".toUpperCase()+message.content;
+    useEffect(() => {
+      const fetchSplitDetails = async () => {
+        try {
+          const provider = new ethers.JsonRpcProvider(
+            process.env.NEXT_PUBLIC_RPC_URL
+          );
+          const result = await getSplitDetails(
+            provider,
+            message.conversationId,
+            message.id
+          );
+          console.log(
+            address,
+            result.memberAddresses.findIndex(
+              (address1: string) =>
+                address1.toLowerCase() == address?.toLowerCase()
+            )
+          ); //amount
+          if (
+            !result.memberPaids[
+              result.memberAddresses.findIndex(
+                (address1: string) =>
+                  address1.toLowerCase() == address?.toLowerCase()
+              )
+            ]
+          ) {
+            console.log("Not Paid");
+          } else {
+            console.log("Paid");
+            setIsJSONParsable(false);
+            message.content =
+              "Already paid your split amount".toUpperCase() + message.content;
+          }
+        } catch (err) {
+          console.error("Failed to get split details", err);
         }
-      } catch (err) {
-        console.error("Failed to get split details", err);
-      }
-    };
+      };
 
-    // Only if content is string and maybe JSON
-    if (typeof message.content === "string") {
-      try {
-        const parsed = JSON.parse(message.content);
-        setParsedJSON(parsed);
+      // Only if content is string and maybe JSON
+      if (typeof message.content === "string") {
+        try {
+          const parsed = JSON.parse(message.content);
+          setParsedJSON(parsed);
+          setIsJSONParsable(true);
+          fetchSplitDetails();
+        } catch {
+          setIsJSONParsable(false);
+        }
+      } else if (
+        typeof message.content === "object" &&
+        message.content !== null
+      ) {
+        setParsedJSON(message.content);
         setIsJSONParsable(true);
         fetchSplitDetails();
-      } catch {
-        setIsJSONParsable(false);
       }
-    } else if (typeof message.content === "object" && message.content !== null) {
-      setParsedJSON(message.content);
-      setIsJSONParsable(true);
-      fetchSplitDetails();
-    }
-  }, [message]);
+    }, [message]);
 
-  const messageContent =
-    typeof message.content === "string" ? message.content : JSON.stringify(message.content, null, 2);
+    const messageContent =
+      typeof message.content === "string"
+        ? message.content
+        : JSON.stringify(message.content, null, 2);
 
-  const words = messageContent.split(" ");
-  const wrappedContent = words.reduce((acc: string[], word: string) => {
-    if (acc.length === 0) return [word];
-    const lastLine = acc[acc.length - 1];
-    if (lastLine.length + word.length + 1 > 50) return [...acc, word];
-    acc[acc.length - 1] = `${lastLine} ${word}`;
-    return acc;
-  }, []);
+    const words = messageContent.split(" ");
+    const wrappedContent = words.reduce((acc: string[], word: string) => {
+      if (acc.length === 0) return [word];
+      const lastLine = acc[acc.length - 1];
+      if (lastLine.length + word.length + 1 > 50) return [...acc, word];
+      acc[acc.length - 1] = `${lastLine} ${word}`;
+      return acc;
+    }, []);
 
-  const handleExecute = () => {
-    console.log("Executing JSON message:", parsedJSON);
-    api
-      .get(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/x402?ConversationId=${message.conversationId}&MessageId=${message.id}&address=${address}`
-      )
-      .then((response) => {
-        const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"]);
-        console.log(paymentResponse);
-      })
-      .catch(console.error);
-  };
+    const handleExecute = () => {
+      console.log("Executing JSON message:", parsedJSON);
+      api
+        .get(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/x402?ConversationId=${message.conversationId}&MessageId=${message.id}&address=${address}`
+        )
+        .then((response) => {
+          const paymentResponse = decodeXPaymentResponse(
+            response.headers["x-payment-response"]
+          );
+          console.log(paymentResponse);
+        })
+        .catch(console.error);
+    };
 
-  return (
-    <div
-      key={message.id}
-      className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}
-    >
+    return (
       <div
-        className={`max-w-[70%] rounded-2xl p-3 ${
-          isSent
-            ? "bg-blue-500 text-white rounded-br-none"
-            : "bg-gray-200 text-gray-800 rounded-bl-none"
-        } shadow-sm`}
+        key={message.id}
+        className={`flex ${isSent ? "justify-end" : "justify-start"} mb-4`}
       >
-        <div className="space-y-1">
-          {wrappedContent.map((line: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<AwaitedReactNode> | null | undefined, i: Key | null | undefined) => (
-            <p key={i} className="text-sm break-words whitespace-pre-wrap">
-              {line}
-            </p>
-          ))}
-          {isJSONParsable && (
-            <button
-              onClick={handleExecute}
-              className={`mt-2 px-3 py-1 rounded text-xs font-medium ${
-                isSent ? "bg-blue-300 text-blue-900" : "bg-gray-300 text-gray-700"
-              } hover:opacity-90`}
-            >
-              Execute
-            </button>
-          )}
-        </div>
-        <p
-          className={`text-xs mt-2 ${
-            isSent ? "text-blue-100" : "text-gray-500"
-          }`}
+        <div
+          className={`max-w-[70%] rounded-2xl p-3 ${
+            isSent
+              ? "bg-blue-500 text-white rounded-br-none"
+              : "bg-gray-200 text-gray-800 rounded-bl-none"
+          } shadow-sm`}
         >
-          {isSent ? "You" : formatAddress(senderAddress)}
-        </p>
+          <div className="space-y-1">
+            {wrappedContent.map(
+              (
+                line:
+                  | string
+                  | number
+                  | bigint
+                  | boolean
+                  | ReactElement<any, string | JSXElementConstructor<any>>
+                  | Iterable<ReactNode>
+                  | ReactPortal
+                  | Promise<AwaitedReactNode>
+                  | null
+                  | undefined,
+                i: Key | null | undefined
+              ) => (
+                <p key={i} className="text-sm break-words whitespace-pre-wrap">
+                  {line}
+                </p>
+              )
+            )}
+            {isJSONParsable && (
+              <button
+                onClick={handleExecute}
+                className={`mt-2 px-3 py-1 rounded text-xs font-medium ${
+                  isSent
+                    ? "bg-blue-300 text-blue-900"
+                    : "bg-gray-300 text-gray-700"
+                } hover:opacity-90`}
+              >
+                Execute
+              </button>
+            )}
+          </div>
+          <p
+            className={`text-xs mt-2 ${
+              isSent ? "text-blue-100" : "text-gray-500"
+            }`}
+          >
+            {isSent
+              ? `You (${formatAddress(senderAddress)})`
+              : `${formatAddress(senderAddress)}`}
+          </p>
+        </div>
       </div>
-    </div>
-  );
-};
-  
+    );
+  };
 
   const NewConversationModal = ({
     isOpen,
@@ -1199,31 +1254,31 @@ export default function Home() {
           </div>
           <div className="w-2/3 flex flex-col">
             {selectedConversation ? (
-  <>
-    {/* Split Button */}
-    <div className="p-4 border-b dark:border-gray-700 flex justify-end">
-      <button
-        onClick={openSplitModal}
-        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-      >
-        Create Split
-      </button>
-    </div>
-    <SplitModal
-  isOpen={isSplitModalOpen}
-  onClose={() => setIsSplitModalOpen(false)}
-  signer={splitSigner}
-  initiatorAddress={address || ""}
-  conversationId={selectedConversation.id}
-  members={members}
-  onBeforeCreate={async (input) => {
-    console.log("onBeforeCreate", input);
-    const id = await sendMessage(JSON.stringify(input));
-  return id; // ensure lastMessageId is set after send
-  }}
-/>
+              <>
+                {/* Split Button */}
+                <div className="p-4 border-b dark:border-gray-700 flex justify-end">
+                  <button
+                    onClick={openSplitModal}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  >
+                    Create Split
+                  </button>
+                </div>
+                <SplitModal
+                  isOpen={isSplitModalOpen}
+                  onClose={() => setIsSplitModalOpen(false)}
+                  signer={splitSigner}
+                  initiatorAddress={address || ""}
+                  conversationId={selectedConversation.id}
+                  members={members}
+                  onBeforeCreate={async (input) => {
+                    console.log("onBeforeCreate", input);
+                    const id = await sendMessage(JSON.stringify(input));
+                    return id; // ensure lastMessageId is set after send
+                  }}
+                />
 
-    <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-semibold">
                       Conversation with {selectedConversation.id}
@@ -1246,9 +1301,51 @@ export default function Home() {
                       No messages yet. Start the conversation!
                     </p>
                   ) : (
-                    messages.map((message, index) =>
-                      <MessageItem key={index} message={message} />
-                    )
+                    messages.map((message, index) => {
+                      // Cast message to RuntimeDecodedMessage type
+                      const runtimeMessage = message as RuntimeDecodedMessage;
+
+                      // Get the current user's inbox ID and address for comparison
+                      const currentInboxId = client?.inboxId;
+                      const currentAddress =
+                        (client as any)?.address || address;
+
+                      // Debug logging to understand the message structure
+                      console.log("Message debug:", {
+                        senderInboxId: runtimeMessage.senderInboxId,
+                        currentInboxId,
+                        senderAddress: runtimeMessage.senderAddress,
+                        currentAddress,
+                        messageId: runtimeMessage.id,
+                      });
+
+                      // Try multiple ways to determine if message is sent by current user
+                      const isSent =
+                        runtimeMessage.senderInboxId === currentInboxId ||
+                        (runtimeMessage.senderAddress &&
+                          currentAddress &&
+                          runtimeMessage.senderAddress.toLowerCase() ===
+                            currentAddress.toLowerCase()) ||
+                        (messageAddresses[runtimeMessage.senderInboxId || ""] &&
+                          currentAddress &&
+                          messageAddresses[
+                            runtimeMessage.senderInboxId || ""
+                          ].toLowerCase() === currentAddress.toLowerCase());
+
+                      const senderAddress =
+                        messageAddresses[runtimeMessage.senderInboxId || ""] ||
+                        runtimeMessage.senderAddress ||
+                        "Unknown";
+
+                      return (
+                        <MessageItem
+                          key={index}
+                          message={runtimeMessage}
+                          isSent={isSent}
+                          senderAddress={senderAddress}
+                        />
+                      );
+                    })
                   )}
                 </div>
                 <div className="p-4 border-t dark:border-gray-700">
@@ -1290,4 +1387,3 @@ export default function Home() {
     </>
   );
 }
-
