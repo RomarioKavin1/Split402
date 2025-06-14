@@ -12,7 +12,7 @@ function getContract(signerOrProvider: ethers.Signer | ethers.Provider) {
   );
 }
 
-export async function createSplit(
+export async function   createSplit(
   signer: ethers.Signer,
   conversationId: string,
   messageId: string,
