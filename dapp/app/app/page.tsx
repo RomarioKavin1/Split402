@@ -1775,12 +1775,8 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-white truncate max-w-[200px]">
-                        {conversationNames[selectedConversation.id] ||
-                          "Unknown"}
+                        Chat
                       </h3>
-                      <p className="text-xs text-gray-400">
-                        {conversationTypes[selectedConversation.id] || "Chat"}
-                      </p>
                     </div>
                   </div>
                 </div>

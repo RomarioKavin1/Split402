@@ -58,7 +58,38 @@ export function LandingPage() {
               friends using blockchain technology.
             </p>
           </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.4 }}
+            className="space-y-4"
+          >
+            <button
+              onClick={handleLaunchDapp}
+              className="group px-10 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white rounded-2xl text-lg font-semibold hover:from-blue-500 hover:via-purple-500 hover:to-emerald-500 transition-all duration-300 shadow-2xl shadow-blue-500/25 border border-white/10 hover:border-white/20 hover:shadow-blue-500/40 transform hover:scale-105"
+            >
+              <span className="flex items-center gap-3">
+                Launch App
+                <svg
+                  className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </span>
+            </button>
 
+            <p className="text-gray-500 text-sm">
+              Connect your wallet to get started • No registration required
+            </p>
+          </motion.div>
           {/* Features */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -140,38 +171,6 @@ export function LandingPage() {
           </motion.div>
 
           {/* CTA Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
-            className="space-y-4"
-          >
-            <button
-              onClick={handleLaunchDapp}
-              className="group px-10 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white rounded-2xl text-lg font-semibold hover:from-blue-500 hover:via-purple-500 hover:to-emerald-500 transition-all duration-300 shadow-2xl shadow-blue-500/25 border border-white/10 hover:border-white/20 hover:shadow-blue-500/40 transform hover:scale-105"
-            >
-              <span className="flex items-center gap-3">
-                Launch App
-                <svg
-                  className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7l5 5m0 0l-5 5m5-5H6"
-                  />
-                </svg>
-              </span>
-            </button>
-
-            <p className="text-gray-500 text-sm">
-              Connect your wallet to get started • No registration required
-            </p>
-          </motion.div>
         </motion.div>
       </div>
 
